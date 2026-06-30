@@ -159,7 +159,7 @@ if pd.notna(depense_moy_mono) and depense_moy_mono > 0:
     ecart = (depense_moy_multi - depense_moy_mono) / depense_moy_mono * 100
     print(f"\nLes clients multi-gamme dépensent en moyenne {ecart:.1f}% de plus que les clients mono-gamme.")
 
-# Fréquence d'achat moyenne par client (version explicite, 2+ commandes) 
+# Fréquence d'achat moyenne par client 
 
 # Nombre de commandes par client
 nb_commandes = df.groupby('nom_client').size().reset_index(name='nb_commandes')
@@ -195,7 +195,7 @@ print(frequence_par_client)
 frequence_globale = frequence_par_client['frequence_moyenne_jours'].mean()
 print(f"\nFréquence d'achat moyenne globale : {frequence_globale:.1f} jours entre deux commandes")
 
-# === Délai moyen de réachat (un seul chiffre, clients 2+ commandes) ===
+# Délai moyen de réachat (un seul chiffre, clients 2+ commandes)
 
 # 1. Garder uniquement les clients ayant 2 commandes ou plus
 nb_commandes = df.groupby('nom_client').size()
@@ -213,3 +213,140 @@ delai_moyen_par_client = df_sorted.groupby('nom_client')['delai_jours'].mean()
 delai_moyen_global = delai_moyen_par_client.mean()
 
 print(f"En moyenne, un client recommande au bout de {delai_moyen_global:.0f} jours.")
+
+# Type de commande des nouveaux clients et évolution dans le temps
+
+# 1. Trier les commandes par client et par date
+df_sorted = df.sort_values(['nom_client', 'Dat_Fact']).copy()
+
+# 2. Donner un numéro d'ordre à chaque commande, pour chaque client (1 = première commande, 2 = deuxième, etc.)
+df_sorted['rang_commande'] = df_sorted.groupby('nom_client').cumcount() + 1
+
+# 3. Répartition des gammes choisies lors de la 1ère commande (les "nouveaux clients")
+premiere_commande = df_sorted[df_sorted['rang_commande'] == 1]
+
+repartition_premiere_commande = (
+    premiere_commande['gamme']
+    .value_counts(normalize=True)
+    .mul(100)
+    .round(1)
+)
+
+print("Répartition des gammes choisies à la 1ère commande (nouveaux clients) :")
+print(repartition_premiere_commande)
+
+# 4. Comparer avec la répartition des gammes sur les commandes suivantes (rang >= 2)
+commandes_suivantes = df_sorted[df_sorted['rang_commande'] >= 2]
+
+repartition_suivantes = (
+    commandes_suivantes['gamme']
+    .value_counts(normalize=True)
+    .mul(100)
+    .round(1)
+)
+
+print("\nRépartition des gammes sur les commandes suivantes (clients fidélisés) :")
+print(repartition_suivantes)
+
+# 5. Évolution détaillée : répartition des gammes pour chaque rang de commande (1ère, 2e, 3e, etc.)
+evolution_par_rang = (
+    df_sorted.groupby('rang_commande')['gamme']
+    .value_counts(normalize=True)
+    .mul(100)
+    .round(1)
+    .rename('pct')
+    .reset_index()
+)
+
+print("\nÉvolution de la répartition des gammes selon le rang de commande :")
+print(evolution_par_rang)
+
+# 6. Tableau croisé plus lisible : rang en ligne, gamme en colonne, % en valeur
+tableau_evolution = (
+    evolution_par_rang
+    .pivot(index='rang_commande', columns='gamme', values='pct')
+    .fillna(0)
+)
+
+print("\nTableau croisé (rang de commande x gamme, en %) :")
+print(tableau_evolution)
+import matplotlib.pyplot as plt
+
+# === Graphique : évolution de la répartition des gammes selon le rang de commande ===
+
+# On limite aux premiers rangs pour rester lisible (les rangs très élevés ont peu de clients)
+rang_max = 10
+tableau_graph = tableau_evolution.loc[tableau_evolution.index <= rang_max]
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ax.stackplot(
+    tableau_graph.index,
+    [tableau_graph[col] for col in tableau_graph.columns],
+    labels=tableau_graph.columns,
+    alpha=0.85
+)
+
+ax.set_xlabel("Rang de la commande (1 = première commande)")
+ax.set_ylabel("Répartition des gammes (%)")
+ax.set_title("Évolution de la répartition des gammes selon l'ancienneté du client")
+ax.legend(title="Gamme", loc='upper left', bbox_to_anchor=(1.02, 1))
+ax.set_xlim(tableau_graph.index.min(), tableau_graph.index.max())
+ax.set_ylim(0, 100)
+
+plt.tight_layout()
+plt.savefig('evolution_gammes.png', dpi=150)
+plt.show()
+# Évolution de la répartition du CA par gamme, selon le rang de commande 
+
+# 1. CA total généré par gamme, pour chaque rang de commande
+evolution_ca_par_rang = (
+    df_sorted.groupby(['rang_commande', 'gamme'])['CA_EUR']
+    .sum()
+    .reset_index()
+)
+
+# 2. Conversion en pourcentage : part de chaque gamme dans le CA total, pour chaque rang
+evolution_ca_par_rang['pct_ca'] = (
+    evolution_ca_par_rang
+    .groupby('rang_commande')['CA_EUR']
+    .transform(lambda x: x / x.sum() * 100)
+    .round(1)
+)
+
+print("Évolution de la répartition du CA par gamme selon le rang de commande :")
+print(evolution_ca_par_rang)
+
+# 3. Tableau croisé : rang en ligne, gamme en colonne, % de CA en valeur
+tableau_evolution_ca = (
+    evolution_ca_par_rang
+    .pivot(index='rang_commande', columns='gamme', values='pct_ca')
+    .fillna(0)
+)
+
+print("\nTableau croisé CA (rang de commande x gamme, en %) :")
+print(tableau_evolution_ca)
+
+# 4. Graphique en courbes empilées (même format que le graphique précédent)
+rang_max = 10
+tableau_graph_ca = tableau_evolution_ca.loc[tableau_evolution_ca.index <= rang_max]
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ax.stackplot(
+    tableau_graph_ca.index,
+    [tableau_graph_ca[col] for col in tableau_graph_ca.columns],
+    labels=tableau_graph_ca.columns,
+    alpha=0.85
+)
+
+ax.set_xlabel("Rang de la commande (1 = première commande)")
+ax.set_ylabel("Répartition du chiffre d'affaires par gamme (%)")
+ax.set_title("Évolution de la répartition du CA par gamme selon l'ancienneté du client")
+ax.legend(title="Gamme", loc='upper left', bbox_to_anchor=(1.02, 1))
+ax.set_xlim(tableau_graph_ca.index.min(), tableau_graph_ca.index.max())
+ax.set_ylim(0, 100)
+
+plt.tight_layout()
+plt.savefig('evolution_gammes_ca.png', dpi=150)
+plt.show()
