@@ -1,6 +1,6 @@
 import pandas as pd
 
-df = pd.read_csv('DataSet Mines(Feuil1).csv')
+df = pd.read_csv('DataSet Mines(Feuil1).csv', sep=";")
 
 df['Dat_Fact'] = pd.to_datetime(df['Dat_Fact'], format='%d/%m/%Y')
 df['annee'] = df['Dat_Fact'].dt.year
@@ -9,7 +9,7 @@ commandes_par_an = df.groupby(['nom_client', 'annee']).size().reset_index(name='
 
 print(commandes_par_an)
 
-classement = df.groupby([df.index, 'nom_client'])['CA_EUR'].sum().reset_index()
+classement = df.groupby('nom_client')['CA_EUR'].sum().reset_index()
 classement.columns = ['nom_client', 'total_depense']
 classement = classement.sort_values('total_depense', ascending=False)
 
