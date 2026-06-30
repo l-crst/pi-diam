@@ -14,7 +14,7 @@ app.layout = dbc.Container(
         html.H1('Analyse du cycle de vie des clients de la société DIAM Bouchage'),
         html.Hr(),
         dcc.RadioItems(
-            options=['dépenseClient', 'nbCommandesClient','commandesAn'],
+            options=['dépenseClient', 'nbCommandesClient','commandesAn',"Ancienneté des clients"],
             value='dépenseClient',
             id='controls-and-radio-item',
             inline=True),
@@ -42,7 +42,17 @@ def update_graph(graph_type):
         fig = px.histogram(df.groupby('nom_client').size().reset_index(name='nb_commandes'), x='nom_client', y='nb_commandes')
     elif graph_type == 'commandesAn':
         fig = px.line(df.groupby('annee').size().reset_index(name='nb_commandes'), x='annee', y='nb_commandes')
-
+    elif graph_type == "Ancienneté des clients":
+        df_pie = repartition.reset_index()
+        df_pie.columns = ["Anciennete", "Valeur"]
+        fig = px.pie(
+            df_pie,
+            names="Anciennete",
+            values="Valeur",
+            title="Répartition de l'ancienneté des clients",
+            color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"],
+        )
+        fig.update_traces(textinfo="percent+label")
     return fig
 
 # Run the app
