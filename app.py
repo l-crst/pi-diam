@@ -16,13 +16,13 @@ app.layout = dbc.Container(
         dcc.RadioItems(
             options=['dépenseClient', 'nbCommandesClient','commandesAn',"Ancienneté des clients"],
             value='dépenseClient',
-            id='controls-and-radio-item',
+            id='radio-item',
             inline=True),
 
         dbc.Row(
     [
-                dbc.Col(dag.AgGrid(rowData=df.to_dict('records'),columnDefs=[{"field": i} for i in df.columns]), md=4),
-                dbc.Col(dcc.Graph(figure={}, id='controls-and-graph'), md=8),
+                dbc.Col(dcc.Graph(figure={}, id='graph'), md=8),
+                dbc.Col(dcc.Graph(figure={}, id='side-graph'), md=4),
             ],
             align='center',
         ),
@@ -32,8 +32,8 @@ app.layout = dbc.Container(
 
 # Add controls to build the interaction
 @callback(
-    Output(component_id='controls-and-graph', component_property='figure'),
-    Input(component_id='controls-and-radio-item', component_property='value')
+    Output(component_id='graph', component_property='figure'),
+    Input(component_id='radio-item', component_property='value')
 )
 def update_graph(graph_type):
     if graph_type == 'dépenseClient':
@@ -53,6 +53,23 @@ def update_graph(graph_type):
             color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"],
         )
         fig.update_traces(textinfo="percent+label")
+    return fig
+
+
+@callback(
+    Output('side-graph', 'figure'),
+    Input('graph','hoverData'),
+    Input('radio-item','value'),
+)
+def update_side_graph(hoverData, graph_type):
+    if hoverData is None or graph_type=='commandesAn':
+        fig = None
+
+    if graph_type == 'dépenseClient' or graph_type == 'nbCommandesClient':
+        client = hoverData['points'][0]['x']
+        filtered_df = df[df['nom_client'] == client].groupby('gamme').size().reset_index(name='number')
+        fig = px.pie(filtered_df, names='gamme', values='number', title=f'Répartition des gammes pour le client {client}')
+
     return fig
 
 # Run the app
