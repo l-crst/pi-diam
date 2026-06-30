@@ -1,33 +1,37 @@
 import pandas as pd
+from datetime import date
+
 
 df = pd.read_csv('DataSet Mines(Feuil1).csv', sep=";")
 
 df['Dat_Fact'] = pd.to_datetime(df['Dat_Fact'], format='%d/%m/%Y')
 df['annee'] = df['Dat_Fact'].dt.year
+#transformer les , de la colonne CA_EUR en .  et supprimer les espaces pour pouvoir convertir en float
+df['CA_EUR'] = df['CA_EUR'].str.replace(',', '.').str.replace(' ','').astype(float)
+
 
 commandes_par_an = df.groupby(['nom_client', 'annee']).size().reset_index(name='nb_commandes')
-
+print("Nombre de commandes par client et par année :")
 print(commandes_par_an)
 
 classement = df.groupby('nom_client')['CA_EUR'].sum().reset_index()
 classement.columns = ['nom_client', 'total_depense']
 classement = classement.sort_values('total_depense', ascending=False)
-
+print("Classement des clients par dépense totale :")
 print(classement)
 
 
 bouchons_par_client = df.groupby('nom_client')['gamme'].unique().reset_index()
 bouchons_par_client.columns = ['nom_client', 'gammes_bouchons']
-
+print("Gammes de bouchons par client :")
 print(bouchons_par_client)
 
 
 clients_recents = df.groupby('nom_client')['Dat_Fact'].max().reset_index()
 clients_recents = clients_recents.sort_values('Dat_Fact', ascending=False)
-
+print("Clients les plus récents :")
 print(clients_recents)
 
-from datetime import date
 
 SEUIL_MOIS = 12
 aujourd_hui = pd.Timestamp(date.today())
@@ -36,10 +40,11 @@ derniere_commande = df.groupby('nom_client')['Dat_Fact'].max().reset_index()
 derniere_commande['jours_inactif'] = (aujourd_hui - derniere_commande['Dat_Fact']).dt.days
 derniere_commande['churn'] = derniere_commande['jours_inactif'] > (SEUIL_MOIS * 30)
 
+print("Dernière commande et jours d'inactivité par client :")
 print(derniere_commande.sort_values('jours_inactif', ascending=False))
 
 
-from datetime import date
+
 
 SEUIL_MOIS = 12
 aujourd_hui = pd.Timestamp(date.today())
