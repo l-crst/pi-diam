@@ -194,21 +194,3 @@ print(frequence_par_client)
 frequence_globale = frequence_par_client['frequence_moyenne_jours'].mean()
 print(f"\nFréquence d'achat moyenne globale : {frequence_globale:.1f} jours entre deux commandes")
 
-# === Délai moyen de réachat (un seul chiffre, clients 2+ commandes) ===
-
-# 1. Garder uniquement les clients ayant 2 commandes ou plus
-nb_commandes = df.groupby('nom_client').size()
-clients_eligibles = nb_commandes[nb_commandes >= 2].index
-df_filtre = df[df['nom_client'].isin(clients_eligibles)]
-
-# 2. Trier par client puis par date
-df_sorted = df_filtre.sort_values(['nom_client', 'Dat_Fact'])
-
-# 3. Écart en jours entre chaque commande et la précédente, par client
-df_sorted['delai_jours'] = df_sorted.groupby('nom_client')['Dat_Fact'].diff().dt.days
-
-# 4. Délai moyen par client, puis moyenne globale de ces délais
-delai_moyen_par_client = df_sorted.groupby('nom_client')['delai_jours'].mean()
-delai_moyen_global = delai_moyen_par_client.mean()
-
-print(f"En moyenne, un client recommande au bout de {delai_moyen_global:.0f} jours.")
