@@ -1,19 +1,17 @@
 from main import *
 from dash import Dash, html, dcc, callback, Output, Input
 import dash_ag_grid as dag
-import pandas as pd
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
 
 # Initialize the app
-external_stylesheets = [dbc.themes.CERULEAN]
-app = Dash(__name__, external_stylesheets=external_stylesheets)
+app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # App layout
 app.layout = dbc.Container(
     [
-        html.H1('My First App with Data and a Graph'),
+        html.H1('Analyse du cycle de vie des clients de la société DIAM Bouchage'),
         html.Hr(),
         dcc.RadioItems(
             options=['dépenseClient', 'nbCommandesClient','commandesAn'],
@@ -39,7 +37,7 @@ app.layout = dbc.Container(
 )
 def update_graph(graph_type):
     if graph_type == 'dépenseClient':
-        fig = px.histogram(classement, x='nom_client', y='total_depense')
+        fig = px.histogram(df.groupby('nom_client')['CA_EUR'].sum().reset_index(name='total_depense'), x='nom_client', y='total_depense')
     elif graph_type == 'nbCommandesClient':
         fig = px.histogram(df.groupby('nom_client').size().reset_index(name='nb_commandes'), x='nom_client', y='nb_commandes')
     elif graph_type == 'commandesAn':
