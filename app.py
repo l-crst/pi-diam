@@ -47,4 +47,4 @@ def update_graph(graph_type):
 
 # Run the app
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
