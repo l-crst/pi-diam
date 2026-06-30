@@ -428,21 +428,14 @@ if __name__ == "__main__":
 
 
 
-    # camembert des âges 
+# Camembert des âges 
 df["Dat_Fact"] = pd.to_datetime(df["Dat_Fact"])
-
-#Trouver la date de première facturation pour chaque client (leur date d'entrée)
+#Trouver la date d'entrée de chaque client'
 df_clients = df.groupby("nom_client")["Dat_Fact"].min().reset_index()
 df_clients.columns = ["nom_client", "Date_Premiere_Fact"]
-
 #Calcul de l'ancienneté en années par rapport à aujourd'hui
 date_actuelle = datetime.now()
-df_clients["Anciennete_Annees"] = (
-    date_actuelle - df_clients["Date_Premiere_Fact"]
-).dt.days / 365.25
-
-
-#Fonction pour attribuer la catégorie d'ancienneté
+df_clients["Anciennete_Annees"] = (date_actuelle - df_clients["Date_Premiere_Fact"]).dt.days / 365.25
 def catégoriser_anciennete(ans):
     if ans < 1:
         return "< 1 an"
@@ -451,26 +444,13 @@ def catégoriser_anciennete(ans):
     elif ans > 3:
         return "> 3 ans"
     else:
-        return "Entre 1 et 2 ans"  # Gère le cas non spécifié dans votre demande
-
-
-df_clients["Categorie"] = df_clients["Anciennete_Annees"].apply(
-    catégoriser_anciennete
-)
-
+        return "Entre 1 et 2 ans"  
+df_clients["Categorie"] = df_clients["Anciennete_Annees"].apply(catégoriser_anciennete)
 #Compter le nombre de clients par catégorie
 repartition = df_clients["Categorie"].value_counts()
-
 #Génération du graphique en camembert (Pie Chart)
 plt.figure(figsize=(8, 6))
-plt.pie(
-    repartition,
-    labels=repartition.index,
-    autopct="%1.1f%%",
-    startangle=140,
-    colors=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"],
-)
+plt.pie(repartition,labels=repartition.index,autopct="%1.1f%%",startangle=140,colors=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"])
 plt.title("Répartition des clients par ancienneté", fontsize=14, fontweight="bold")
-plt.axis("equal")  # Assure que le camembert est bien un cercle
-
+plt.axis("equal") 
 plt.show()
