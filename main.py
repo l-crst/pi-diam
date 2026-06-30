@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 from datetime import date
 
 
@@ -70,3 +71,36 @@ date_limite = pd.Timestamp.now() - pd.DateOffset(years=3)
 proportion = (premiere_commande < date_limite).mean()
 
 print(f"Proportion de clients depuis plus de 3 ans : {proportion:.2%}")
+
+#5. Fréquence d'achat
+df['Dat_Fact'] = pd.to_datetime(df['Dat_Fact'], errors='coerce')
+df = df.dropna(subset=['nom_client', 'Dat_Fact'])
+total_orders = df.groupby(['nom_client', 'Dat_Fact']).ngroups
+unique_clients = df['nom_client'].nunique()
+purchase_frequency = total_orders / unique_clients if unique_clients else 0.0
+
+print({'total_orders': int(total_orders),'unique_clients': int(unique_clients),'purchase_frequency': purchase_frequency })
+
+#6. Délai moyen entre 2 achats
+    
+df['Dat_Fact'] = pd.to_datetime(df['Dat_Fact'], errors='coerce')
+df = df.dropna(subset=['nom_client', 'Dat_Fact'])
+df = df.sort_values(['nom_client', 'Dat_Fact'])
+
+interpurchase_days = (df.groupby('nom_client')['Dat_Fact'].diff().dt.days.dropna())
+average_days = interpurchase_days.mean() if not interpurchase_days.empty else 0.0
+
+print({'average_interpurchase_days': float(average_days),'num_intervals': int(len(interpurchase_days))})
+
+# Graphique du nombre de clients en fonction du nombre de commandes
+orders_per_client = df.groupby('nom_client').size()
+clients_by_order_count = orders_per_client.value_counts().sort_index()
+
+plt.figure(figsize=(12, 6))
+plt.bar(clients_by_order_count.index, clients_by_order_count.values)
+plt.title('Nombre de clients en fonction du nombre de commandes')
+plt.xlabel('Nombre de commandes par client')
+plt.ylabel('Nombre de clients')
+plt.xlim(0, 150)
+plt.grid(axis='y', linestyle='--', alpha=0.5)
+plt.show()
