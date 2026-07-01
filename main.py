@@ -256,7 +256,8 @@ tableau_evolution = (
     .pivot(index='rang_commande', columns='gamme', values='pct')
     .fillna(0)
 )
-
+rang_max = 10
+tableau_graph = tableau_evolution.loc[tableau_evolution.index <= rang_max]
 
 
 
@@ -285,6 +286,7 @@ tableau_evolution_ca = (
     .pivot(index='rang_commande', columns='gamme', values='pct_ca')
     .fillna(0)
 )
+tableau_graph_ca = tableau_evolution_ca.loc[tableau_evolution_ca.index <= rang_max]
 
 #Panier moyen 
 def calculer_paniers(df: pd.DataFrame) -> pd.DataFrame:
@@ -313,6 +315,8 @@ def calculer_evolution_panier_moyen(paniers: pd.DataFrame) -> pd.DataFrame:
         .mean()
         .reset_index(name='panier_moyen')
     )
+paniers = calculer_paniers(df)
+evolution_panier_moyen = calculer_evolution_panier_moyen(paniers)
 
 
 def tracer_evolution_panier_moyen(evolution_panier_moyen: pd.DataFrame, nom_fichier: str) -> None:
