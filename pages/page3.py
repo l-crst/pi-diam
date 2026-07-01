@@ -6,6 +6,7 @@ from dash import html, dcc, callback, Input, Output
 import plotly.express as px
 import dash_bootstrap_components as dbc
 import pandas as pd
+import numpy as np
 import pycountry
 
 dash.register_page(__name__)
@@ -13,16 +14,46 @@ dash.register_page(__name__)
 # --- CHARGEMENT DES DONNÉES ---
 df_intl = pd.read_csv("VfinaleHIstorical Sales(Copie de Sheet1) (1).csv", sep=";")
 
-# Nettoyage / typage
+# --- NETTOYAGE / TYPAGE ---
 df_intl['Date_Fact'] = pd.to_datetime(df_intl['Date_Fact'], errors='coerce')
-df_intl['QUANTITE'] = pd.to_numeric(df_intl['QUANTITE'], errors='coerce')
+
+
+def nettoyer_quantite(val):
+    """
+    Nettoie une valeur numérique au format français (espaces, virgules,
+    séparateurs de milliers) et la convertit en float.
+    """
+    if pd.isna(val):
+        return None
+    val = str(val).strip()
+    val = val.replace('\xa0', '').replace(' ', '')  # espaces normaux + insécables
+    if val == '':
+        return None
+    # Si virgule présente = séparateur décimal français
+    # -> on retire les points (milliers) puis on remplace la virgule par un point
+    if ',' in val:
+        val = val.replace('.', '').replace(',', '.')
+    try:
+        return float(val)
+    except ValueError:
+        return None
+
+
+df_intl['QUANTITE'] = df_intl['QUANTITE'].apply(nettoyer_quantite)
 df_intl = df_intl.dropna(subset=['Date_Fact', 'PAYS_FACT'])
 df_intl['annee'] = df_intl['Date_Fact'].dt.year
 
 
 def convertir_iso2_en_iso3(code_iso2):
+    if pd.isna(code_iso2):
+        return None
+    code = str(code_iso2).strip().upper()
+    # Corrections pour codes d'usage non-ISO standard
+    corrections = {"UK": "GB", "EL": "GR"}
+    code = corrections.get(code, code)
     try:
-        return pycountry.countries.get(alpha_2=str(code_iso2).upper()).alpha_3
+        pays = pycountry.countries.get(alpha_2=code)
+        return pays.alpha_3 if pays else None
     except Exception:
         return None
 
@@ -94,15 +125,22 @@ def update_graph(graph_type):
             .agg(nb_commandes=('Code_Client', 'count'), quantite_totale=('QUANTITE', 'sum'))
             .reset_index()
         )
-        fig = px.scatter_geo(
+        # Échelle logarithmique pour éviter que la France (ou tout autre
+        # gros marché) n'écrase visuellement les autres pays
+        df_geo['quantite_log'] = np.log10(df_geo['quantite_totale'].clip(lower=1))
+
+        fig = px.choropleth(
             df_geo,
             locations="iso_alpha3",
-            size="quantite_totale",
-            color="quantite_totale",
+            color="quantite_log",
             color_continuous_scale="YlOrRd",
             hover_name="PAYS_FACT",
-            hover_data={"nb_commandes": True, "quantite_totale": True, "iso_alpha3": False},
-            size_max=35,
+            hover_data={
+                "nb_commandes": True,
+                "quantite_totale": True,
+                "quantite_log": False,
+                "iso_alpha3": False,
+            },
             projection="natural earth",
             title="Volume des commandes par pays de facturation",
         )
@@ -113,7 +151,11 @@ def update_graph(graph_type):
         fig.update_layout(
             margin={"r": 0, "t": 50, "l": 0, "b": 0},
             title_font_size=16,
-            coloraxis_colorbar=dict(title="Quantité<br>commandée"),
+            coloraxis_colorbar=dict(
+                title="Quantité<br>commandée",
+                tickvals=[0, 1, 2, 3, 4, 5],
+                ticktext=["1", "10", "100", "1k", "10k", "100k"],
+            ),
         )
 
     elif graph_type == 'evolutionPays':
