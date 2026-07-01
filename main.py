@@ -565,74 +565,74 @@ if __name__ == "__main__":
     plt.savefig('evolution_gammes_ca.png', dpi=150)
     plt.show()
 
-    
-# Tracé de la heatmap
 
-plt.figure(figsize=(16, 10))
-sns.heatmap(
-    pivot,
-    cmap="YlOrBr",
-    annot=False,
-    fmt=".0f",
-    linewidths=0.5,
-    linecolor="white",
-    cbar_kws={"label": "Quantité commandée"}
-)
-plt.title("Top 30 clients — Quantité par trimestre", fontsize=14)
-plt.xticks(rotation=45, ha="right")
-plt.tight_layout()
-plt.show()
+    # Tracé de la heatmap
 
-
-# Tracé meilleurs clients
-
-couleurs = {
-    "Champions (à chouchouter)":          "#2ecc71",
-    "Gros clients perdus (à réactiver)":  "#e74c3c",
-    "Petits clients actifs (à développer)":"#3498db",
-    "Petits clients inactifs (à surveiller)":"#95a5a6"
-}
-
-fig, ax = plt.subplots(figsize=(14, 9))
-
-for segment, groupe in client_df.groupby("segment"):
-    ax.scatter(
-        groupe["jours_inactif"],
-        groupe["total_ca"],
-        c=couleurs[segment],
-        label=f"{segment} ({len(groupe)})",
-        alpha=0.6,
-        s=groupe["nb_commandes"] * 3,  # taille = nb commandes
-        edgecolors="white",
-        linewidths=0.4
+    plt.figure(figsize=(16, 10))
+    sns.heatmap(
+        pivot,
+        cmap="YlOrBr",
+        annot=False,
+        fmt=".0f",
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"label": "Quantité commandée"}
     )
+    plt.title("Top 30 clients — Quantité par trimestre", fontsize=14)
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
 
-# Lignes de séparation des quadrants
-ax.axvline(x=seuil_recence, color="grey", linestyle="--", linewidth=1)
-ax.axhline(y=seuil_ca,      color="grey", linestyle="--", linewidth=1)
 
-# Annotations des quadrants
-ax.text(50,   client_df["total_ca"].max() * 0.9, "CHAMPIONS\nà chouchouter",   color="#2ecc71", fontweight="bold", fontsize=9)
-ax.text(400,  client_df["total_ca"].max() * 0.9, "GROS CLIENTS PERDUS\nà réactiver d'urgence", color="#e74c3c", fontweight="bold", fontsize=9)
-ax.text(50,   seuil_ca * 0.1,                    "Petits clients\nactifs",      color="#3498db", fontsize=8)
-ax.text(400,  seuil_ca * 0.1,                    "Petits clients\ninactifs",    color="#95a5a6", fontsize=8)
+    # Tracé meilleurs clients
 
-ax.set_xlabel("Jours depuis la dernière commande", fontsize=11)
-ax.set_ylabel("CA total (€)", fontsize=11)
-ax.set_title("Segmentation clients — CA vs Récence\n(taille du point = nb de commandes)", fontsize=13, pad=15)
-ax.legend(loc="upper right", fontsize=8)
-ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x/1000:.0f}k€"))
+    couleurs = {
+        "Champions (à chouchouter)":          "#2ecc71",
+        "Gros clients perdus (à réactiver)":  "#e74c3c",
+        "Petits clients actifs (à développer)":"#3498db",
+        "Petits clients inactifs (à surveiller)":"#95a5a6"
+    }
 
-plt.tight_layout()
-plt.show()
+    fig, ax = plt.subplots(figsize=(14, 9))
 
-# Résumé chiffré par segment
-print(client_df.groupby("segment").agg(
-    nb_clients=("nom_client", "count"),
-    ca_total=("total_ca", "sum"),
-    ca_moyen=("total_ca", "mean"),
-    inactivite_moyenne=("jours_inactif", "mean")
-).sort_values("ca_total", ascending=False))
+    for segment, groupe in client_df.groupby("segment"):
+        ax.scatter(
+            groupe["jours_inactif"],
+            groupe["total_ca"],
+            c=couleurs[segment],
+            label=f"{segment} ({len(groupe)})",
+            alpha=0.6,
+            s=groupe["nb_commandes"] * 3,  # taille = nb commandes
+            edgecolors="white",
+            linewidths=0.4
+        )
+
+    # Lignes de séparation des quadrants
+    ax.axvline(x=seuil_recence, color="grey", linestyle="--", linewidth=1)
+    ax.axhline(y=seuil_ca,      color="grey", linestyle="--", linewidth=1)
+
+    # Annotations des quadrants
+    ax.text(50,   client_df["total_ca"].max() * 0.9, "CHAMPIONS\nà chouchouter",   color="#2ecc71", fontweight="bold", fontsize=9)
+    ax.text(400,  client_df["total_ca"].max() * 0.9, "GROS CLIENTS PERDUS\nà réactiver d'urgence", color="#e74c3c", fontweight="bold", fontsize=9)
+    ax.text(50,   seuil_ca * 0.1,                    "Petits clients\nactifs",      color="#3498db", fontsize=8)
+    ax.text(400,  seuil_ca * 0.1,                    "Petits clients\ninactifs",    color="#95a5a6", fontsize=8)
+
+    ax.set_xlabel("Jours depuis la dernière commande", fontsize=11)
+    ax.set_ylabel("CA total (€)", fontsize=11)
+    ax.set_title("Segmentation clients — CA vs Récence\n(taille du point = nb de commandes)", fontsize=13, pad=15)
+    ax.legend(loc="upper right", fontsize=8)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x/1000:.0f}k€"))
+
+    plt.tight_layout()
+    plt.show()
+
+    # Résumé chiffré par segment
+    print(client_df.groupby("segment").agg(
+        nb_clients=("nom_client", "count"),
+        ca_total=("total_ca", "sum"),
+        ca_moyen=("total_ca", "mean"),
+        inactivite_moyenne=("jours_inactif", "mean")
+    ).sort_values("ca_total", ascending=False))
 
 
     #Génération du graphique en camembert (Pie Chart)
