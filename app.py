@@ -56,9 +56,7 @@ def update_graph(graph_type):
             xaxis_title="Mois",
             yaxis_title="Panier moyen (EUR)",
             xaxis_tickangle=-90
-        )
-
-    return fig   
+        ) 
 
     return fig
 
