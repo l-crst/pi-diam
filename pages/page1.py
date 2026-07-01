@@ -11,9 +11,6 @@ options = [
     {'label': 'Nb Commandes Client', 'value': 'nbCommandesClient'},
     {'label': 'Commandes / An', 'value': 'commandesAn'},
     {'label': 'Ancienneté des clients', 'value': 'Ancienneté des clients'},
-    {'label': 'Répartition des gammes', 'value': 'gammes'},
-    {'label': 'Évolution des gammes', 'value': 'evolutionGammes'},
-    {'label': 'Évolution du CA par gamme', 'value': 'evolutionGammesCA'},
     {'label': 'Panier moyen', 'value': 'panierMoyen'},
 ]
 # App layout
@@ -32,7 +29,7 @@ layout = dbc.Container(
         dbc.Row(
             dbc.Col(
                 dbc.RadioItems(
-                    id='radio-item',
+                    id='radio-item-clients',
                     options=options,
                     value='dépenseClient',
                     inline=True,
@@ -49,8 +46,12 @@ layout = dbc.Container(
 
         dbc.Row(
     [
-                dbc.Col(dcc.Graph(figure={}, id='graph'), md=8),
-                dbc.Col(dcc.Graph(figure={}, id='side-graph'), md=4),
+                dbc.Col(dcc.Graph(figure={}, id='graph-clients'), width=7, id='graph-clients-container'),
+                dbc.Col(
+                    dcc.Graph(figure={}, id='side-graph-clients'),
+                    id='side-graph-clients-container',
+                    md=4,
+                    style={'display': 'none'},)
             ],
             align='center',
         ),
@@ -60,8 +61,8 @@ layout = dbc.Container(
 
 # Add controls to build the interaction
 @callback(
-    Output(component_id='graph', component_property='figure'),
-    Input(component_id='radio-item', component_property='value')
+    Output(component_id='graph-clients', component_property='figure'),
+    Input(component_id='radio-item-clients', component_property='value')
 )
 def update_graph(graph_type):
     if graph_type == 'dépenseClient':
@@ -81,27 +82,7 @@ def update_graph(graph_type):
             color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"],
         )
         fig.update_traces(textinfo="percent+label")
-    elif graph_type == 'gammes':
-        fig = px.histogram(df.groupby('gamme')['CA_EUR'].sum().reset_index(name='total_depense'), x='gamme', y='total_depense')
-    elif graph_type == 'evolutionGammes':
-        df_plot = tableau_graph.reset_index().melt(
-            id_vars='rang_commande',
-            var_name='Gamme',
-            value_name='pct'
-        )
-        fig = px.area(
-            df_plot,
-            x='rang_commande',
-            y='pct',
-            color='Gamme',
-            groupnorm='percent',
-            title="Évolution de la répartition des commandes par gamme selon l'ancienneté du client"
-        )
-        fig.update_layout(
-            xaxis_title="Rang de la commande (1 = première commande)",
-            yaxis_title="Répartition des commandes par gamme (%)",
-            legend_title="Gamme"
-        )
+
     elif graph_type == 'panierMoyen':
         evolution_plot = evolution_panier_moyen.copy()
         evolution_plot['mois'] = evolution_plot['mois'].astype(str)
@@ -116,43 +97,32 @@ def update_graph(graph_type):
             xaxis_title="Mois",
             yaxis_title="Panier moyen (EUR)",
             xaxis_tickangle=-90
-        ) 
-
-    elif graph_type == 'evolutionGammesCA':
-        df_plot_ca = tableau_graph_ca.reset_index().melt(
-            id_vars='rang_commande',
-            var_name='Gamme',
-            value_name='pct_ca'
-        )
-        fig = px.area(
-            df_plot_ca,
-            x='rang_commande',
-            y='pct_ca',
-            color='Gamme',
-            groupnorm='percent',
-            title="Évolution de la répartition du chiffre d'affaires par gamme selon l'ancienneté du client"
-        )
-        fig.update_layout(
-            xaxis_title="Rang de la commande (1 = première commande)",
-            yaxis_title="Répartition du chiffre d'affaires par gamme (%)",
-            legend_title="Gamme"
         )
     return fig
+
+
 
 
 @callback(
-    Output('side-graph', 'figure'),
-    Input('graph','hoverData'),
-    Input('radio-item','value'),
+    Output('side-graph-clients', 'figure'),
+    Output('side-graph-clients-container', 'style'),
+    Output('graph-clients-container', 'md'), # <-- Nouvel Output pour redimensionner la colonne principale
+    Input('graph-clients', 'hoverData'),
+    Input('radio-item-clients', 'value'),
 )
 def update_side_graph(hoverData, graph_type):
-    if hoverData is None or graph_type=='commandesAn':
-        fig = None
+    # Si on ne survole rien OU que le graphe n'utilise pas le side-graph
+    if hoverData is None or graph_type not in ['dépenseClient', 'nbCommandesClient']:
+        # Fig vide, colonne cachée, ET la colonne principale prend 12 espaces (100%)
+        return {}, {'display': 'none'}, 12
 
-    if graph_type == 'dépenseClient' or graph_type == 'nbCommandesClient':
+    # Si on est dans un cas où le side-graph doit s'afficher :
+    if graph_type in ['dépenseClient', 'nbCommandesClient']:
         client = hoverData['points'][0]['x']
         filtered_df = df[df['nom_client'] == client].groupby('gamme').size().reset_index(name='number')
-        fig = px.pie(filtered_df, names='gamme', values='number', title=f'Répartition des gammes pour le client {client}')
+        fig = px.pie(filtered_df, names='gamme', values='number',
+                     title=f'Répartition des gammes pour le client {client}')
 
-    return fig
+        # Fig calculée, colonne visible, ET la colonne principale se réduit à 8 espaces
+        return fig, {'display': 'block'}, 8
 
