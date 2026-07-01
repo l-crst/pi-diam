@@ -6,15 +6,42 @@ import dash_bootstrap_components as dbc
 
 dash.register_page(__name__)
 
+options = [
+    {'label': 'Dépense Client', 'value': 'dépenseClient'},
+    {'label': 'Nb Commandes Client', 'value': 'nbCommandesClient'},
+    {'label': 'Commandes / An', 'value': 'commandesAn'},
+    {'label': 'Ancienneté des clients', 'value': 'Ancienneté des clients'},
+]
+# App layout
 layout = dbc.Container(
     [
-        html.H1('Analyse du cycle de vie des clients de la société DIAM Bouchage'),
+              html.Div(
+            [
+                html.H1(
+                    'Analyse du cycle de vie des clients de la société DIAM Bouchage',
+                    className='text-center',
+                ),
+            ],
+            style={'marginTop': '40px', 'marginBottom': '30px'},
+        ),
         html.Hr(),
-        dcc.RadioItems(
-            options=['dépenseClient', 'nbCommandesClient','commandesAn',"Ancienneté des clients"],
-            value='dépenseClient',
-            id='radio-item',
-            inline=True),
+        dbc.Row(
+            dbc.Col(
+                dbc.RadioItems(
+                    id='radio-item',
+                    options=options,
+                    value='dépenseClient',
+                    inline=True,
+                    className='btn-group',
+                    inputClassName='btn-check',
+                    labelClassName='btn btn-outline-primary',
+                    labelCheckedClassName='active',
+                ),
+                width='auto',
+            ),
+            justify='center',
+            className='mb-4',
+        ),
 
         dbc.Row(
     [
@@ -47,7 +74,7 @@ def update_graph(graph_type):
             names="Anciennete",
             values="Valeur",
             title="Répartition de l'ancienneté des clients",
-            color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"],
+            color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"],
         )
         fig.update_traces(textinfo="percent+label")
     return fig
@@ -68,3 +95,4 @@ def update_side_graph(hoverData, graph_type):
         fig = px.pie(filtered_df, names='gamme', values='number', title=f'Répartition des gammes pour le client {client}')
 
     return fig
+
