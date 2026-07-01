@@ -164,6 +164,21 @@ frequence_par_client['commandes_par_an_estimees'] = (365 / frequence_par_client[
 
 frequence_globale = frequence_par_client['frequence_moyenne_jours'].mean()
 
+# histogramme des fréquences d'achat 
+df["Dat_Fact"] = pd.to_datetime(df["Dat_Fact"])
+df = df.sort_values(by=["nom_client", "Dat_Fact"])
+df["jours_entre_achats"] = (df.groupby("nom_client")["Dat_Fact"].diff().dt.days)
+df_intervalles = df.dropna(subset=["jours_entre_achats"])
+plt.figure(figsize=(13, 6))
+plt.hist(df_intervalles["jours_entre_achats"],bins=[0, 15, 30, 45, 60, 90, 120, 150,200,250,300, 365],edgecolor="black",)
+plt.xlabel("Délai entre deux achats en jours (Axe X)")
+plt.ylabel("Nombre de réachats observés (Axe Y)")
+plt.title("Rythme de réachat des clients")
+plt.grid(axis="y", alpha=0.5)
+plt.show()
+
+
+
 
 # Délai moyen de réachat (un seul chiffre, clients 2+ commandes)
 
