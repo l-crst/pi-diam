@@ -49,8 +49,7 @@ layout = dbc.Container(
 
         dbc.Row(
     [
-                dbc.Col(dcc.Graph(figure={}, id='graph-gammes'), md=8),
-                dbc.Col(dcc.Graph(figure={}, id='side-graph-gammes'), md=4),
+                dcc.Graph(figure={}, id='graph-gammes'),
             ],
             align='center',
         ),
