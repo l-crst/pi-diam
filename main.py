@@ -169,7 +169,7 @@ df["Dat_Fact"] = pd.to_datetime(df["Dat_Fact"])
 df = df.sort_values(by=["nom_client", "Dat_Fact"])
 df["jours_entre_achats"] = (df.groupby("nom_client")["Dat_Fact"].diff().dt.days)
 df_intervalles = df.dropna(subset=["jours_entre_achats"])
-if __name__==__main__:
+if __name__=="__main__":
     plt.figure(figsize=(13, 6))
     plt.hist(df_intervalles["jours_entre_achats"],bins=[0, 15, 30, 45, 60, 90, 120, 150,200,250,300, 365],edgecolor="black",)
     plt.xlabel("Délai entre deux achats en jours (Axe X)")

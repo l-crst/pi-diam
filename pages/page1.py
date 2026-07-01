@@ -51,7 +51,12 @@ layout = dbc.Container(
         dbc.Row(
     [
                 dbc.Col(dcc.Graph(figure={}, id='graph'), md=8),
-                dbc.Col(dcc.Graph(figure={}, id='side-graph'), md=4),
+        dbc.Col(
+            dcc.Graph(figure={}, id='side-graph'),
+            id='side-graph-container',  # <-- On ajoute un ID ici
+            md=4,
+            style={'display': 'none'}  # <-- Caché par défaut au lancement
+        ),
             ],
             align='center',
         ),
@@ -201,17 +206,23 @@ def update_graph(graph_type):
 
 @callback(
     Output('side-graph', 'figure'),
-    Input('graph','hoverData'),
-    Input('radio-item','value'),
+    Output('side-graph-container', 'style'),
+    Input('graph', 'hoverData'),
+    Input('radio-item', 'value'),
 )
 def update_side_graph(hoverData, graph_type):
-    if hoverData is None or graph_type=='commandesAn':
-        fig = None
+    # Si on ne survole rien OU que le graphe n'utilise pas le side-graph
+    if hoverData is None or graph_type not in ['dépenseClient', 'nbCommandesClient']:
+        # On retourne un dictionnaire vide pour la figure, et on cache la colonne
+        return {}, {'display': 'none'}
 
+    # Si on est dans un cas où le side-graph doit s'afficher :
     if graph_type == 'dépenseClient' or graph_type == 'nbCommandesClient':
         client = hoverData['points'][0]['x']
         filtered_df = df[df['nom_client'] == client].groupby('gamme').size().reset_index(name='number')
-        fig = px.pie(filtered_df, names='gamme', values='number', title=f'Répartition des gammes pour le client {client}')
+        fig = px.pie(filtered_df, names='gamme', values='number',
+                     title=f'Répartition des gammes pour le client {client}')
 
-    return fig
+        # On retourne la figure, ET on passe l'affichage de la colonne en "block" (visible)
+        return fig, {'display': 'block'}
 
