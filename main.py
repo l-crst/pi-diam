@@ -301,12 +301,14 @@ df_clients["Anciennete_Annees"] = (date_actuelle - df_clients["Date_Premiere_Fac
 def catégoriser_anciennete(ans):
     if ans < 1:
         return "< 1 an"
-    elif 2 <= ans <= 3:
-        return "Entre 2 et 3 ans"
-    elif ans > 3:
-        return "> 3 ans"
-    else:
+    elif 1 <= ans <= 2:
         return "Entre 1 et 2 ans"
+    elif 2 < ans <= 3:
+        return "Entre 2 et 3 ans"
+    elif 3 < ans <= 4:
+        return "Entre 3 et 4 ans"
+    else:
+        return "> 4 ans"
 
 
 df_clients["Categorie"] = df_clients["Anciennete_Annees"].apply(catégoriser_anciennete)
@@ -456,7 +458,7 @@ if __name__ == "__main__":
 
     #Génération du graphique en camembert (Pie Chart)
     plt.figure(figsize=(8, 6))
-    plt.pie(repartition,labels=repartition.index,autopct="%1.1f%%",startangle=140,colors=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"])
+    plt.pie(repartition,labels=repartition.index,autopct="%1.1f%%",startangle=140,colors=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"])
     plt.title("Répartition des clients par ancienneté", fontsize=14, fontweight="bold")
     plt.axis("equal")
     plt.show()
