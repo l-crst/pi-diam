@@ -1,102 +1,52 @@
 from main import *
+import dash
 from dash import Dash, html, dcc, callback, Output, Input
 import dash_ag_grid as dag
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
 
+
+
 # Initialize the app
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], use_pages=True)
 
-options = [
-    {'label': 'Dépense Client', 'value': 'dépenseClient'},
-    {'label': 'Nb Commandes Client', 'value': 'nbCommandesClient'},
-    {'label': 'Commandes / An', 'value': 'commandesAn'},
-    {'label': 'Ancienneté des clients', 'value': 'Ancienneté des clients'},
-]
-# App layout
-app.layout = dbc.Container(
+SIDEBAR_STYLE = {
+    "position": "fixed",
+    "top": 0,
+    "left": 0,
+    "bottom": 0,
+    "width": "16rem",
+    "padding": "2rem 1rem",
+    "background-color": "#f8f9fa",
+}
+
+CONTENT_STYLE = {
+    "margin-left": "18rem",
+    "margin-right": "2rem",
+    "padding": "2rem 1rem",
+}
+
+sidebar = html.Div(
     [
-              html.Div(
-            [
-                html.H1(
-                    'Analyse du cycle de vie des clients de la société DIAM Bouchage',
-                    className='text-center', 
-                ),
-            ],
-            style={'marginTop': '40px', 'marginBottom': '30px'},  
-        ),
+        html.H2("Sidebar", className="display-4"),
         html.Hr(),
-        dbc.Row(
-            dbc.Col(
-                dbc.RadioItems(  
-                    id='radio-item',
-                    options=options,
-                    value='dépenseClient',
-                    inline=True,
-                    className='btn-group',            
-                    inputClassName='btn-check',        
-                    labelClassName='btn btn-outline-primary',  
-                    labelCheckedClassName='active',    
-                ),
-                width='auto',
-            ),
-            justify='center',  
-            className='mb-4',  
-        ),
-
-        dbc.Row(
-    [
-                dbc.Col(dcc.Graph(figure={}, id='graph'), md=8),
-                dbc.Col(dcc.Graph(figure={}, id='side-graph'), md=4),
-            ],
-            align='center',
-        ),
+        html.P("A simple sidebar layout with navigation links", className="lead"),
+        html.Div([
+            html.Div(
+                dcc.Link(f"{page['name']} - {page['path']}", href=page["relative_path"])
+            ) for page in dash.page_registry.values()
+        ]),
     ],
-    fluid=True,
-)
+    style=SIDEBAR_STYLE,)
 
-# Add controls to build the interaction
-@callback(
-    Output(component_id='graph', component_property='figure'),
-    Input(component_id='radio-item', component_property='value')
-)
-def update_graph(graph_type):
-    if graph_type == 'dépenseClient':
-        fig = px.histogram(df.groupby('nom_client')['CA_EUR'].sum().reset_index(name='total_depense'), x='nom_client', y='total_depense')
-    elif graph_type == 'nbCommandesClient':
-        fig = px.histogram(df.groupby('nom_client').size().reset_index(name='nb_commandes'), x='nom_client', y='nb_commandes')
-    elif graph_type == 'commandesAn':
-        fig = px.line(df.groupby('annee').size().reset_index(name='nb_commandes'), x='annee', y='nb_commandes')
-    elif graph_type == "Ancienneté des clients":
-        df_pie = repartition.reset_index()
-        df_pie.columns = ["Anciennete", "Valeur"]
-        fig = px.pie(
-            df_pie,
-            names="Anciennete",
-            values="Valeur",
-            title="Répartition de l'ancienneté des clients",
-            color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"],
-        )
-        fig.update_traces(textinfo="percent+label")
-    return fig
+content = html.Div([
+    dash.page_container,
+    ]
+    , style=CONTENT_STYLE)
 
-
-@callback(
-    Output('side-graph', 'figure'),
-    Input('graph','hoverData'),
-    Input('radio-item','value'),
-)
-def update_side_graph(hoverData, graph_type):
-    if hoverData is None or graph_type=='commandesAn':
-        fig = None
-
-    if graph_type == 'dépenseClient' or graph_type == 'nbCommandesClient':
-        client = hoverData['points'][0]['x']
-        filtered_df = df[df['nom_client'] == client].groupby('gamme').size().reset_index(name='number')
-        fig = px.pie(filtered_df, names='gamme', values='number', title=f'Répartition des gammes pour le client {client}')
-
-    return fig
+# App layout
+app.layout = html.Div([dcc.Location(id="url"), sidebar, content])
 
 # Run the app
 if __name__ == '__main__':
