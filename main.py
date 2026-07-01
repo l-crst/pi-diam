@@ -272,7 +272,8 @@ tableau_evolution = (
     .pivot(index='rang_commande', columns='gamme', values='pct')
     .fillna(0)
 )
-
+rang_max = 10
+tableau_graph = tableau_evolution.loc[tableau_evolution.index <= rang_max]
 
 
 
@@ -301,6 +302,78 @@ tableau_evolution_ca = (
     .pivot(index='rang_commande', columns='gamme', values='pct_ca')
     .fillna(0)
 )
+tableau_graph_ca = tableau_evolution_ca.loc[tableau_evolution_ca.index <= rang_max]
+
+#Panier moyen 
+def calculer_paniers(df: pd.DataFrame) -> pd.DataFrame:
+    """Regroupe les commandes par client et par jour pour former des paniers."""
+    return (
+        df.groupby(['nom_client', 'Dat_Fact'])
+        .agg(montant_panier=('CA_EUR', 'sum'), nb_lignes=('CA_EUR', 'size'))
+        .reset_index()
+    )
+
+# Heatmap produit vs mois (avec la quantité en intensité de couleur)
+
+import seaborn as sns
+
+df["QUANTITE"] = (
+    df["QUANTITE"].astype(str)
+    .str.replace(" ", "", regex=False)       # espaces insécables
+    .str.replace(".", "", regex=False)       # séparateur de milliers
+    .str.replace(",", ".", regex=False)      # virgule décimale → point
+)
+df["QUANTITE"] = pd.to_numeric(df["QUANTITE"], errors="coerce").fillna(0)
+df["Dat_Fact"] = pd.to_datetime(df["Dat_Fact"])
+
+### Création de la colonne "mois" (format Année-Mois pour trier correctement)
+df["mois"] = df["Dat_Fact"].dt.to_period("M").astype(str)
+
+# Top 30 clients par CA
+top30 = df.groupby("nom_client")["CA_EUR"].sum().nlargest(30).index
+
+df_top = df[df["nom_client"].isin(top30)].copy()
+df_top["trimestre"] = df_top["Dat_Fact"].dt.to_period("Q").astype(str)
+
+### Pivot : clients en lignes, mois en colonnes, somme des quantités 
+
+pivot = df_top.pivot_table(index="nom_client", columns="trimestre", values="QUANTITE", aggfunc="sum", fill_value=0)
+pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
+
+### trier les clients par quantité totale décroissante pour plus de visibilité
+pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=False).index]
+
+
+# meilleurs clients
+
+import matplotlib.patches as mpatches
+
+today = pd.Timestamp.today()
+
+client_df = df.groupby("nom_client").agg(
+    total_ca=("CA_EUR", "sum"),
+    derniere_commande=("Dat_Fact", "max"),
+    nb_commandes=("Dat_Fact", "count")
+).reset_index()
+
+client_df["jours_inactif"] = (today - client_df["derniere_commande"]).dt.days
+
+# Segmentation en 4
+seuil_ca     = client_df["total_ca"].median()
+seuil_recence = 365  # plus d'un an sans commande = à risque
+
+def segment(row):
+    if row["total_ca"] >= seuil_ca and row["jours_inactif"] <= seuil_recence:
+        return "Champions (à chouchouter)"
+    elif row["total_ca"] >= seuil_ca and row["jours_inactif"] > seuil_recence:
+        return "Gros clients perdus (à réactiver)"
+    elif row["total_ca"] < seuil_ca and row["jours_inactif"] <= seuil_recence:
+        return "Petits clients actifs (à développer)"
+    else:
+        return "Petits clients inactifs (à surveiller)"
+
+client_df["segment"] = client_df.apply(segment, axis=1)
+
 
 # Camembert des âges
 df["Dat_Fact"] = pd.to_datetime(df["Dat_Fact"])
@@ -316,12 +389,14 @@ df_clients["Anciennete_Annees"] = (date_actuelle - df_clients["Date_Premiere_Fac
 def catégoriser_anciennete(ans):
     if ans < 1:
         return "< 1 an"
-    elif 2 <= ans <= 3:
-        return "Entre 2 et 3 ans"
-    elif ans > 3:
-        return "> 3 ans"
-    else:
+    elif 1 <= ans <= 2:
         return "Entre 1 et 2 ans"
+    elif 2 < ans <= 3:
+        return "Entre 2 et 3 ans"
+    elif 3 < ans <= 4:
+        return "Entre 3 et 4 ans"
+    else:
+        return "> 4 ans"
 
 
 df_clients["Categorie"] = df_clients["Anciennete_Annees"].apply(catégoriser_anciennete)
@@ -330,6 +405,43 @@ df_clients["Categorie"] = df_clients["Anciennete_Annees"].apply(catégoriser_anc
 repartition = df_clients["Categorie"].value_counts()
 
 
+def calculer_panier_moyen_par_client(paniers: pd.DataFrame) -> pd.DataFrame:
+    return (
+        paniers.groupby('nom_client')['montant_panier']
+        .mean()
+        .reset_index(name='panier_moyen')
+        .sort_values('panier_moyen', ascending=False)
+    )
+
+
+def calculer_evolution_panier_moyen(paniers: pd.DataFrame) -> pd.DataFrame:
+    paniers = paniers.copy()
+    paniers['mois'] = paniers['Dat_Fact'].dt.to_period('M')
+    return (
+        paniers.groupby('mois')['montant_panier']
+        .mean()
+        .reset_index(name='panier_moyen')
+    )
+paniers = calculer_paniers(df)
+evolution_panier_moyen = calculer_evolution_panier_moyen(paniers)
+
+
+def tracer_evolution_panier_moyen(evolution_panier_moyen: pd.DataFrame, nom_fichier: str) -> None:
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(
+        evolution_panier_moyen['mois'].astype(str),
+        evolution_panier_moyen['panier_moyen'],
+        marker='o'
+    )
+    ax.set_xlabel("Mois")
+    ax.set_ylabel("Panier moyen (EUR)")
+    ax.set_title("Évolution du panier moyen dans le temps")
+    ax.tick_params(axis='x', rotation=90)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(nom_fichier, dpi=150)
+    plt.close(fig)
 
 if __name__ == "__main__":
     print("Nombre de commandes par client et par année :")
@@ -469,9 +581,96 @@ if __name__ == "__main__":
     plt.show()
 
 
-    #Génération du graphique en camembert (Pie Chart)
-    plt.figure(figsize=(8, 6))
-    plt.pie(repartition,labels=repartition.index,autopct="%1.1f%%",startangle=140,colors=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99"])
-    plt.title("Répartition des clients par ancienneté", fontsize=14, fontweight="bold")
-    plt.axis("equal")
+    # Tracé de la heatmap
+
+    plt.figure(figsize=(16, 10))
+    sns.heatmap(
+        pivot,
+        cmap="YlOrBr",
+        annot=False,
+        fmt=".0f",
+        linewidths=0.5,
+        linecolor="white",
+        cbar_kws={"label": "Quantité commandée"}
+    )
+    plt.title("Top 30 clients — Quantité par trimestre", fontsize=14)
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
     plt.show()
+
+
+    # Tracé meilleurs clients
+
+    couleurs = {
+        "Champions (à chouchouter)":          "#2ecc71",
+        "Gros clients perdus (à réactiver)":  "#e74c3c",
+        "Petits clients actifs (à développer)":"#3498db",
+        "Petits clients inactifs (à surveiller)":"#95a5a6"
+    }
+
+    fig, ax = plt.subplots(figsize=(14, 9))
+
+    for segment, groupe in client_df.groupby("segment"):
+        ax.scatter(
+            groupe["jours_inactif"],
+            groupe["total_ca"],
+            c=couleurs[segment],
+            label=f"{segment} ({len(groupe)})",
+            alpha=0.6,
+            s=groupe["nb_commandes"] * 3,  # taille = nb commandes
+            edgecolors="white",
+            linewidths=0.4
+        )
+
+    # Lignes de séparation des quadrants
+    ax.axvline(x=seuil_recence, color="grey", linestyle="--", linewidth=1)
+    ax.axhline(y=seuil_ca,      color="grey", linestyle="--", linewidth=1)
+
+    # Annotations des quadrants
+    ax.text(50,   client_df["total_ca"].max() * 0.9, "CHAMPIONS\nà chouchouter",   color="#2ecc71", fontweight="bold", fontsize=9)
+    ax.text(400,  client_df["total_ca"].max() * 0.9, "GROS CLIENTS PERDUS\nà réactiver d'urgence", color="#e74c3c", fontweight="bold", fontsize=9)
+    ax.text(50,   seuil_ca * 0.1,                    "Petits clients\nactifs",      color="#3498db", fontsize=8)
+    ax.text(400,  seuil_ca * 0.1,                    "Petits clients\ninactifs",    color="#95a5a6", fontsize=8)
+
+    ax.set_xlabel("Jours depuis la dernière commande", fontsize=11)
+    ax.set_ylabel("CA total (€)", fontsize=11)
+    ax.set_title("Segmentation clients — CA vs Récence\n(taille du point = nb de commandes)", fontsize=13, pad=15)
+    ax.legend(loc="upper right", fontsize=8)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x/1000:.0f}k€"))
+
+    plt.tight_layout()
+    plt.show()
+
+    # Résumé chiffré par segment
+    print(client_df.groupby("segment").agg(
+        nb_clients=("nom_client", "count"),
+        ca_total=("total_ca", "sum"),
+        ca_moyen=("total_ca", "mean"),
+        inactivite_moyenne=("jours_inactif", "mean")
+    ).sort_values("ca_total", ascending=False))
+
+
+#Génération du graphique en camembert (Pie Chart)
+plt.figure(figsize=(8, 6))
+plt.pie(repartition,labels=repartition.index,autopct="%1.1f%%",startangle=140,colors=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"])
+plt.title("Répartition des clients par ancienneté", fontsize=14, fontweight="bold")
+plt.axis("equal")
+plt.show()
+paniers = calculer_paniers(df)
+print("Détail des paniers (client x jour) :")
+print(paniers)
+
+panier_moyen_global = paniers['montant_panier'].mean()
+print(f"\nPanier moyen global : {panier_moyen_global:.2f} EUR")
+
+panier_moyen_par_client = calculer_panier_moyen_par_client(paniers)
+print("\nPanier moyen par client :")
+print(panier_moyen_par_client)
+
+evolution_panier_moyen = calculer_evolution_panier_moyen(paniers)
+print("\nÉvolution du panier moyen par mois :")
+print(evolution_panier_moyen)
+
+tracer_evolution_panier_moyen(evolution_panier_moyen, 'evolution_panier_moyen.png')
+print("\nGraphique enregistré : evolution_panier_moyen.png")
+

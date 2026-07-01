@@ -1,5 +1,5 @@
--Camembert avec age des clients
--Camemberts avec games vendues
+
+-Camemberts avec gammes vendues
 -Nuages de points prix payé vs quantité par client
 -Mono-gamme vs multi gamme (format? camembert)
 -histogramme fréquence d'achat
