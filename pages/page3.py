@@ -98,6 +98,8 @@ def update_graph(graph_type):
             df_geo,
             locations="iso_alpha3",
             size="quantite_totale",
+            color="quantite_totale",
+            color_continuous_scale="YlOrRd",
             hover_name="PAYS_FACT",
             hover_data={"nb_commandes": True, "quantite_totale": True, "iso_alpha3": False},
             size_max=35,
@@ -111,6 +113,7 @@ def update_graph(graph_type):
         fig.update_layout(
             margin={"r": 0, "t": 50, "l": 0, "b": 0},
             title_font_size=16,
+            coloraxis_colorbar=dict(title="Quantité<br>commandée"),
         )
 
     elif graph_type == 'evolutionPays':
