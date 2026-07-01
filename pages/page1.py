@@ -11,6 +11,9 @@ options = [
     {'label': 'Nb Commandes Client', 'value': 'nbCommandesClient'},
     {'label': 'Commandes / An', 'value': 'commandesAn'},
     {'label': 'Ancienneté des clients', 'value': 'Ancienneté des clients'},
+    {'label': 'Répartition des gammes', 'value': 'gammes'},
+    {'label': 'Évolution des gammes', 'value': 'evolutionGammes'},
+    {'label': 'Évolution du CA par gamme', 'value': 'evolutionGammesCA'},
 ]
 # App layout
 layout = dbc.Container(
@@ -77,6 +80,47 @@ def update_graph(graph_type):
             color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"],
         )
         fig.update_traces(textinfo="percent+label")
+    elif graph_type == 'gammes':
+        fig = px.histogram(df.groupby('gamme')['CA_EUR'].sum().reset_index(name='total_depense'), x='gamme', y='total_depense')
+    elif graph_type == 'evolutionGammes':
+        df_plot = tableau_graph.reset_index().melt(
+            id_vars='rang_commande',
+            var_name='Gamme',
+            value_name='pct'
+        )
+        fig = px.area(
+            df_plot,
+            x='rang_commande',
+            y='pct',
+            color='Gamme',
+            groupnorm='percent',
+            title="Évolution de la répartition des commandes par gamme selon l'ancienneté du client"
+        )
+        fig.update_layout(
+            xaxis_title="Rang de la commande (1 = première commande)",
+            yaxis_title="Répartition des commandes par gamme (%)",
+            legend_title="Gamme"
+        )
+
+    elif graph_type == 'evolutionGammesCA':
+        df_plot_ca = tableau_graph_ca.reset_index().melt(
+            id_vars='rang_commande',
+            var_name='Gamme',
+            value_name='pct_ca'
+        )
+        fig = px.area(
+            df_plot_ca,
+            x='rang_commande',
+            y='pct_ca',
+            color='Gamme',
+            groupnorm='percent',
+            title="Évolution de la répartition du chiffre d'affaires par gamme selon l'ancienneté du client"
+        )
+        fig.update_layout(
+            xaxis_title="Rang de la commande (1 = première commande)",
+            yaxis_title="Répartition du chiffre d'affaires par gamme (%)",
+            legend_title="Gamme"
+        )
     return fig
 
 
