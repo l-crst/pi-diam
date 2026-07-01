@@ -46,10 +46,10 @@ layout = dbc.Container(
 
         dbc.Row(
     [
-                dbc.Col(dcc.Graph(figure={}, id='graph'), width=7),
+                dbc.Col(dcc.Graph(figure={}, id='graph-clients'), width=7, id='graph-clients-container'),
                 dbc.Col(
-                    dcc.Graph(figure={}, id='side-graph'),
-                    id='side-graph-container',
+                    dcc.Graph(figure={}, id='side-graph-clients'),
+                    id='side-graph-clients-container',
                     md=4,
                     style={'display': 'none'},)
             ],
@@ -98,29 +98,31 @@ def update_graph(graph_type):
             yaxis_title="Panier moyen (EUR)",
             xaxis_tickangle=-90
         )
+    return fig
 
 
 
 
 @callback(
-    Output('side-graph', 'figure'),
-    Output('side-graph-container', 'style'),
-    Input('graph', 'hoverData'),
-    Input('radio-item', 'value'),
+    Output('side-graph-clients', 'figure'),
+    Output('side-graph-clients-container', 'style'),
+    Output('graph-clients-container', 'md'), # <-- Nouvel Output pour redimensionner la colonne principale
+    Input('graph-clients', 'hoverData'),
+    Input('radio-item-clients', 'value'),
 )
 def update_side_graph(hoverData, graph_type):
     # Si on ne survole rien OU que le graphe n'utilise pas le side-graph
     if hoverData is None or graph_type not in ['dépenseClient', 'nbCommandesClient']:
-        # On retourne un dictionnaire vide pour la figure, et on cache la colonne
-        return {}, {'display': 'none'}
+        # Fig vide, colonne cachée, ET la colonne principale prend 12 espaces (100%)
+        return {}, {'display': 'none'}, 12
 
     # Si on est dans un cas où le side-graph doit s'afficher :
-    if graph_type == 'dépenseClient' or graph_type == 'nbCommandesClient':
+    if graph_type in ['dépenseClient', 'nbCommandesClient']:
         client = hoverData['points'][0]['x']
         filtered_df = df[df['nom_client'] == client].groupby('gamme').size().reset_index(name='number')
         fig = px.pie(filtered_df, names='gamme', values='number',
                      title=f'Répartition des gammes pour le client {client}')
 
-        # On retourne la figure, ET on passe l'affichage de la colonne en "block" (visible)
-        return fig, {'display': 'block'}
+        # Fig calculée, colonne visible, ET la colonne principale se réduit à 8 espaces
+        return fig, {'display': 'block'}, 8
 
