@@ -50,13 +50,12 @@ layout = dbc.Container(
 
         dbc.Row(
     [
-                dbc.Col(dcc.Graph(figure={}, id='graph'), md=8),
-        dbc.Col(
-            dcc.Graph(figure={}, id='side-graph'),
-            id='side-graph-container',  # <-- On ajoute un ID ici
-            md=4,
-            style={'display': 'none'}  # <-- Caché par défaut au lancement
-        ),
+                dbc.Col(dcc.Graph(figure={}, id='graph'), width=7),
+                dbc.Col(
+                    dcc.Graph(figure={}, id='side-graph'),
+                    id='side-graph-container',
+                    md=4,
+                    style={'display': 'none'},)
             ],
             align='center',
         ),
