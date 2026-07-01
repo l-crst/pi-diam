@@ -14,7 +14,7 @@ app.layout = dbc.Container(
         html.H1('Analyse du cycle de vie des clients de la société DIAM Bouchage'),
         html.Hr(),
         dcc.RadioItems(
-            options=['dépenseClient', 'nbCommandesClient','commandesAn'],
+            options=['dépenseClient', 'nbCommandesClient','commandesAn','panierMoyen'],
             value='dépenseClient',
             id='controls-and-radio-item',
             inline=True),
@@ -42,6 +42,23 @@ def update_graph(graph_type):
         fig = px.histogram(df.groupby('nom_client').size().reset_index(name='nb_commandes'), x='nom_client', y='nb_commandes')
     elif graph_type == 'commandesAn':
         fig = px.line(df.groupby('annee').size().reset_index(name='nb_commandes'), x='annee', y='nb_commandes')
+    elif graph_type == 'panierMoyen':
+        evolution_plot = evolution_panier_moyen.copy()
+        evolution_plot['mois'] = evolution_plot['mois'].astype(str)
+        fig = px.line(
+            evolution_plot,
+            x='mois',
+            y='panier_moyen',
+            markers=True,
+            title="Évolution du panier moyen dans le temps"
+        )
+        fig.update_layout(
+            xaxis_title="Mois",
+            yaxis_title="Panier moyen (EUR)",
+            xaxis_tickangle=-90
+        )
+
+    return fig   
 
     return fig
 
