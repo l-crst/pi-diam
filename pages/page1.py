@@ -46,8 +46,12 @@ layout = dbc.Container(
 
         dbc.Row(
     [
-                dbc.Col(dcc.Graph(figure={}, id='graph-clients'), md=8),
-                dbc.Col(dcc.Graph(figure={}, id='side-graph-clients'), md=4),
+                dbc.Col(dcc.Graph(figure={}, id='graph'), width=7),
+                dbc.Col(
+                    dcc.Graph(figure={}, id='side-graph'),
+                    id='side-graph-container',
+                    md=4,
+                    style={'display': 'none'},)
             ],
             align='center',
         ),
@@ -78,7 +82,7 @@ def update_graph(graph_type):
             color_discrete_sequence=["#ff9999", "#66b3ff", "#99ff99", "#ffcc99", "#c2c2f0"],
         )
         fig.update_traces(textinfo="percent+label")
-   
+
     elif graph_type == 'panierMoyen':
         evolution_plot = evolution_panier_moyen.copy()
         evolution_plot['mois'] = evolution_plot['mois'].astype(str)
@@ -93,25 +97,30 @@ def update_graph(graph_type):
             xaxis_title="Mois",
             yaxis_title="Panier moyen (EUR)",
             xaxis_tickangle=-90
-        ) 
+        )
 
 
 
 
 @callback(
-    Output('side-graph-clients', 'figure', allow_duplicate=True),
-    Input('graph-clients','hoverData'),
-    Input('radio-item-clients','value'),
-    prevent_initial_call=True,
+    Output('side-graph', 'figure'),
+    Output('side-graph-container', 'style'),
+    Input('graph', 'hoverData'),
+    Input('radio-item', 'value'),
 )
 def update_side_graph(hoverData, graph_type):
-    if hoverData is None or graph_type=='commandesAn':
-        fig = None
+    # Si on ne survole rien OU que le graphe n'utilise pas le side-graph
+    if hoverData is None or graph_type not in ['dépenseClient', 'nbCommandesClient']:
+        # On retourne un dictionnaire vide pour la figure, et on cache la colonne
+        return {}, {'display': 'none'}
 
+    # Si on est dans un cas où le side-graph doit s'afficher :
     if graph_type == 'dépenseClient' or graph_type == 'nbCommandesClient':
         client = hoverData['points'][0]['x']
         filtered_df = df[df['nom_client'] == client].groupby('gamme').size().reset_index(name='number')
-        fig = px.pie(filtered_df, names='gamme', values='number', title=f'Répartition des gammes pour le client {client}')
+        fig = px.pie(filtered_df, names='gamme', values='number',
+                     title=f'Répartition des gammes pour le client {client}')
 
-    return fig
+        # On retourne la figure, ET on passe l'affichage de la colonne en "block" (visible)
+        return fig, {'display': 'block'}
 
