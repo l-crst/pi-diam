@@ -14,6 +14,7 @@ options = [
     {'label': 'Répartition des gammes', 'value': 'gammes'},
     {'label': 'Évolution des gammes', 'value': 'evolutionGammes'},
     {'label': 'Évolution du CA par gamme', 'value': 'evolutionGammesCA'},
+    {'label': 'Panier moyen', 'value': 'panierMoyen'},
 ]
 # App layout
 layout = dbc.Container(
@@ -101,6 +102,21 @@ def update_graph(graph_type):
             yaxis_title="Répartition des commandes par gamme (%)",
             legend_title="Gamme"
         )
+    elif graph_type == 'panierMoyen':
+        evolution_plot = evolution_panier_moyen.copy()
+        evolution_plot['mois'] = evolution_plot['mois'].astype(str)
+        fig = px.line(
+            evolution_plot,
+            x='mois',
+            y='panier_moyen',
+            markers=True,
+            title="Évolution du panier moyen dans le temps"
+        )
+        fig.update_layout(
+            xaxis_title="Mois",
+            yaxis_title="Panier moyen (EUR)",
+            xaxis_tickangle=-90
+        ) 
 
     elif graph_type == 'evolutionGammesCA':
         df_plot_ca = tableau_graph_ca.reset_index().melt(
