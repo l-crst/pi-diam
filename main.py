@@ -257,7 +257,8 @@ tableau_evolution = (
     .pivot(index='rang_commande', columns='gamme', values='pct')
     .fillna(0)
 )
-
+rang_max = 10
+tableau_graph = tableau_evolution.loc[tableau_evolution.index <= rang_max]
 
 
 
@@ -286,6 +287,16 @@ tableau_evolution_ca = (
     .pivot(index='rang_commande', columns='gamme', values='pct_ca')
     .fillna(0)
 )
+tableau_graph_ca = tableau_evolution_ca.loc[tableau_evolution_ca.index <= rang_max]
+
+#Panier moyen 
+def calculer_paniers(df: pd.DataFrame) -> pd.DataFrame:
+    """Regroupe les commandes par client et par jour pour former des paniers."""
+    return (
+        df.groupby(['nom_client', 'Dat_Fact'])
+        .agg(montant_panier=('CA_EUR', 'sum'), nb_lignes=('CA_EUR', 'size'))
+        .reset_index()
+    )
 
 # Camembert des âges
 df["Dat_Fact"] = pd.to_datetime(df["Dat_Fact"])
@@ -317,6 +328,43 @@ df_clients["Categorie"] = df_clients["Anciennete_Annees"].apply(catégoriser_anc
 repartition = df_clients["Categorie"].value_counts()
 
 
+def calculer_panier_moyen_par_client(paniers: pd.DataFrame) -> pd.DataFrame:
+    return (
+        paniers.groupby('nom_client')['montant_panier']
+        .mean()
+        .reset_index(name='panier_moyen')
+        .sort_values('panier_moyen', ascending=False)
+    )
+
+
+def calculer_evolution_panier_moyen(paniers: pd.DataFrame) -> pd.DataFrame:
+    paniers = paniers.copy()
+    paniers['mois'] = paniers['Dat_Fact'].dt.to_period('M')
+    return (
+        paniers.groupby('mois')['montant_panier']
+        .mean()
+        .reset_index(name='panier_moyen')
+    )
+paniers = calculer_paniers(df)
+evolution_panier_moyen = calculer_evolution_panier_moyen(paniers)
+
+
+def tracer_evolution_panier_moyen(evolution_panier_moyen: pd.DataFrame, nom_fichier: str) -> None:
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(
+        evolution_panier_moyen['mois'].astype(str),
+        evolution_panier_moyen['panier_moyen'],
+        marker='o'
+    )
+    ax.set_xlabel("Mois")
+    ax.set_ylabel("Panier moyen (EUR)")
+    ax.set_title("Évolution du panier moyen dans le temps")
+    ax.tick_params(axis='x', rotation=90)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(nom_fichier, dpi=150)
+    plt.close(fig)
 
 if __name__ == "__main__":
     print("Nombre de commandes par client et par année :")
@@ -462,3 +510,21 @@ if __name__ == "__main__":
     plt.title("Répartition des clients par ancienneté", fontsize=14, fontweight="bold")
     plt.axis("equal")
     plt.show()
+    paniers = calculer_paniers(df)
+    print("Détail des paniers (client x jour) :")
+    print(paniers)
+
+    panier_moyen_global = paniers['montant_panier'].mean()
+    print(f"\nPanier moyen global : {panier_moyen_global:.2f} EUR")
+
+    panier_moyen_par_client = calculer_panier_moyen_par_client(paniers)
+    print("\nPanier moyen par client :")
+    print(panier_moyen_par_client)
+
+    evolution_panier_moyen = calculer_evolution_panier_moyen(paniers)
+    print("\nÉvolution du panier moyen par mois :")
+    print(evolution_panier_moyen)
+
+    tracer_evolution_panier_moyen(evolution_panier_moyen, 'evolution_panier_moyen.png')
+    print("\nGraphique enregistré : evolution_panier_moyen.png")
+
