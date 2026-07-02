@@ -31,10 +31,10 @@ sidebar = html.Div(
     [
         html.H2("Sidebar", className="display-4"),
         html.Hr(),
-        html.P("A simple sidebar layout with navigation links", className="lead"),
+        html.P("Analyse de différents aspects (clients,gamme, international)", className="lead"),
         html.Div([
             html.Div(
-                dcc.Link(f"{page['name']} - {page['path']}", href=page["relative_path"])
+                dcc.Link(f"{page['name']}", href=page["relative_path"])
             ) for page in dash.page_registry.values()
         ]),
     ],
