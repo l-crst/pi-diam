@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import pycountry
 
-dash.register_page(__name__)
+dash.register_page(__name__,name="International")
 
 # --- CHARGEMENT DES DONNÉES ---
 df_intl = pd.read_csv("VfinaleHIstorical Sales(Copie de Sheet1) (1).csv", sep=";")
@@ -177,6 +177,44 @@ def update_graph(graph_type):
             yaxis_title="Répartition des commandes par pays (%)",
             legend_title="Pays",
         )
+
+    # --- Étiquettes des 5 plus gros pays sur leur courbe ---
+        top5_pays = (
+            df_intl.groupby('PAYS_FACT')['QUANTITE']
+            .sum()
+            .sort_values(ascending=False)
+            .head(5)
+            .index
+            .tolist()
+    )
+
+        derniere_annee = df_evo['annee'].max()
+        df_derniere = df_evo[df_evo['annee'] == derniere_annee].copy()
+        df_derniere['pct'] = df_derniere['QUANTITE'] / df_derniere['QUANTITE'].sum() * 100
+
+    # L'ordre d'empilement de plotly correspond à l'ordre des traces
+    # générées dans la figure -> on s'en sert pour calculer la
+    # position cumulée (centre de chaque bande) à la dernière année
+        ordre_pays = [trace.name for trace in fig.data]
+        df_derniere['ordre'] = df_derniere['PAYS_FACT'].apply(
+            lambda p: ordre_pays.index(p) if p in ordre_pays else -1
+        )
+        df_derniere = df_derniere.sort_values('ordre')
+        df_derniere['cum_pct'] = df_derniere['pct'].cumsum()
+        df_derniere['y_label'] = df_derniere['cum_pct'] - df_derniere['pct'] / 2
+
+        for _, row in df_derniere[df_derniere['PAYS_FACT'].isin(top5_pays)].iterrows():
+            fig.add_annotation(
+                x=derniere_annee,
+                y=row['y_label'],
+                text=f"<b>{row['PAYS_FACT']}</b>",
+                showarrow=False,
+                xanchor='left',
+                xshift=10,
+                font=dict(size=11, color='black'),
+            )
+
+        fig.update_layout(margin=dict(r=120))  # espace à droite pour les étiquettes
 
     elif graph_type == 'topPays':
         df_top = (
