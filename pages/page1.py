@@ -12,6 +12,7 @@ options = [
     {'label': 'Commandes / An', 'value': 'commandesAn'},
     {'label': 'Ancienneté des clients', 'value': 'Ancienneté des clients'},
     {'label': 'Panier moyen', 'value': 'panierMoyen'},
+    {'label': 'Clients à surveiller', 'value': 'clientsSurveiller'},
 ]
 # App layout
 layout = dbc.Container(
@@ -98,6 +99,21 @@ def update_graph(graph_type):
             yaxis_title="Panier moyen (EUR)",
             xaxis_tickangle=-90
         )
+    elif graph_type == 'clientsSurveiller':
+        df_alerte = clients_a_surveiller[clients_a_surveiller['statut'] == 'À surveiller'].head(20)
+        fig = px.bar(
+            df_alerte,
+            x='nom_client',
+            y='ratio',
+            color='ca_total',
+            color_continuous_scale='Reds',
+            title="Top 20 clients à surveiller (rythme d'achat ralenti)"
+        )
+        fig.update_layout(
+            xaxis_title="Client",
+            yaxis_title="Ratio inactivité / rythme habituel",
+            xaxis_tickangle=-45
+        )        
     return fig
 
 

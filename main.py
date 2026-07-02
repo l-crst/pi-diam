@@ -443,6 +443,56 @@ def tracer_evolution_panier_moyen(evolution_panier_moyen: pd.DataFrame, nom_fich
     plt.tight_layout()
     plt.savefig(nom_fichier, dpi=150)
     plt.close(fig)
+# === Clients à surveiller (ralentissement du rythme d'achat) ===
+
+def calculer_clients_a_surveiller(df: pd.DataFrame, min_commandes: int = 3, facteur_alerte: float = 1.5) -> pd.DataFrame:
+    """
+    Détecte les clients dont le délai depuis leur dernière commande dépasse
+    significativement leur rythme d'achat historique.
+
+    - min_commandes : nombre minimum de commandes pour calculer un rythme fiable
+    - facteur_alerte : le client est signalé si son inactivité actuelle dépasse
+      (facteur_alerte x son délai moyen habituel entre commandes)
+    """
+    df_sorted = df.sort_values(['nom_client', 'Dat_Fact']).copy()
+
+    # Délai entre commandes consécutives, par client
+    df_sorted['delai_jours'] = df_sorted.groupby('nom_client')['Dat_Fact'].diff().dt.days
+
+    # Nombre de commandes par client
+    nb_commandes = df_sorted.groupby('nom_client').size()
+    clients_eligibles = nb_commandes[nb_commandes >= min_commandes].index
+
+    df_filtre = df_sorted[df_sorted['nom_client'].isin(clients_eligibles)]
+
+    # Rythme moyen habituel par client
+    rythme_moyen = (
+        df_filtre.groupby('nom_client')['delai_jours']
+        .mean()
+        .reset_index(name='rythme_moyen_jours')
+    )
+
+    # Dernière commande et inactivité actuelle
+    aujourd_hui = pd.Timestamp.now()
+    derniere_commande = df_filtre.groupby('nom_client')['Dat_Fact'].max().reset_index()
+    derniere_commande['jours_inactif'] = (aujourd_hui - derniere_commande['Dat_Fact']).dt.days
+
+    # Fusion et calcul du ratio d'alerte
+    surveillance = derniere_commande.merge(rythme_moyen, on='nom_client')
+    surveillance['ratio'] = (surveillance['jours_inactif'] / surveillance['rythme_moyen_jours']).round(2)
+
+    surveillance['statut'] = surveillance['ratio'].apply(
+        lambda r: 'À surveiller' if r >= facteur_alerte else 'Rythme normal'
+    )
+
+    # CA total pour prioriser (un gros client à surveiller est plus urgent)
+    ca_client = df.groupby('nom_client')['CA_EUR'].sum().reset_index(name='ca_total')
+    surveillance = surveillance.merge(ca_client, on='nom_client')
+
+    return surveillance.sort_values('ratio', ascending=False)
+
+
+clients_a_surveiller = calculer_clients_a_surveiller(df)
 
 if __name__ == "__main__":
     print("Nombre de commandes par client et par année :")
