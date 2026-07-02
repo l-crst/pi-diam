@@ -3,8 +3,9 @@ from main import *
 from dash import html, dcc, callback, Input, Output
 import plotly.express as px
 import dash_bootstrap_components as dbc
+import dash_ag_grid as dag
 
-dash.register_page(__name__,name="Analyse des clients")
+dash.register_page(__name__, name="Analyse des clients")
 
 options = [
     {'label': 'Dépense Client', 'value': 'dépenseClient'},
@@ -13,11 +14,61 @@ options = [
     {'label': 'Ancienneté des clients', 'value': 'Ancienneté des clients'},
     {'label': 'Panier moyen', 'value': 'panierMoyen'},
     {'label': 'Clients à surveiller', 'value': 'clientsSurveiller'},
+    {'label': 'Clients par an', 'value': 'clientsParAn'},  # <-- nouvel onglet
 ]
+
+# ------------------------------------------------------------------
+# Préparation des données pour l'onglet "Clients par an"
+# ------------------------------------------------------------------
+clients_par_an = (
+    df.dropna(subset=['annee'])
+    .groupby('annee')['nom_client']
+    .nunique()
+    .reset_index(name='nb_clients')
+    .sort_values('annee')
+    .reset_index(drop=True)
+)
+clients_par_an['delta_abs'] = clients_par_an['nb_clients'].diff()
+clients_par_an['delta_pct'] = (clients_par_an['nb_clients'].pct_change() * 100).round(1)
+clients_par_an['annee'] = clients_par_an['annee'].astype(int)
+
+# Colonnes formatées pour l'affichage (le calcul de couleur se base sur parseFloat, donc le "+"/"%" ne gêne pas)
+clients_par_an['delta_abs_fmt'] = clients_par_an['delta_abs'].apply(
+    lambda x: '-' if pd.isna(x) else f"{int(x):+d}"
+)
+clients_par_an['delta_pct_fmt'] = clients_par_an['delta_pct'].apply(
+    lambda x: '-' if pd.isna(x) else f"{x:+.1f}%"
+)
+
+# Règle de couleur commune : vert si positif, rouge si négatif, neutre sinon (première année)
+style_couleur_delta = {
+    "styleConditions": [
+        {"condition": "parseFloat(params.value) > 0", "style": {"color": "#1e7e34", "fontWeight": "bold"}},
+        {"condition": "parseFloat(params.value) < 0", "style": {"color": "#c0392b", "fontWeight": "bold"}},
+    ],
+    "defaultStyle": {"color": "#6c757d"},
+}
+
+table_clients_par_an = dag.AgGrid(
+    id='grid-clients-par-an',
+    columnDefs=[
+        {"field": "annee", "headerName": "Année", "sortable": True, "filter": True},
+        {"field": "nb_clients", "headerName": "Nb clients", "sortable": True, "filter": True},
+        {"field": "delta_abs_fmt", "headerName": "Delta vs N-1", "cellStyle": style_couleur_delta},
+        {"field": "delta_pct_fmt", "headerName": "Delta %", "cellStyle": style_couleur_delta},
+    ],
+    rowData=clients_par_an.to_dict('records'),
+    defaultColDef={"resizable": True, "sortable": True, "filter": True},
+    dashGridOptions={"domLayout": "autoHeight"},
+    style={"width": "100%"},
+    className="ag-theme-alpine",
+    dangerously_allow_code=True,  # nécessaire pour les cellStyle avec condition JS (parseFloat)
+)
+
 # App layout
 layout = dbc.Container(
     [
-              html.Div(
+        html.Div(
             [
                 html.H1(
                     'Analyse du cycle de vie des clients de la société DIAM Bouchage',
@@ -46,19 +97,27 @@ layout = dbc.Container(
         ),
 
         dbc.Row(
-    [
+            [
                 dbc.Col(dcc.Graph(figure={}, id='graph-clients'), width=7, id='graph-clients-container'),
                 dbc.Col(
                     dcc.Graph(figure={}, id='side-graph-clients'),
                     id='side-graph-clients-container',
                     md=4,
-                    style={'display': 'none'},)
+                    style={'display': 'none'},
+                ),
             ],
             align='center',
+        ),
+
+        # Onglet "Clients par an" : caché par défaut, affiché via callback
+        dbc.Row(
+            dbc.Col(table_clients_par_an, width=8, id='table-clients-container', style={'display': 'none'}),
+            justify='center',
         ),
     ],
     fluid=True,
 )
+
 
 # Add controls to build the interaction
 @callback(
@@ -66,6 +125,9 @@ layout = dbc.Container(
     Input(component_id='radio-item-clients', component_property='value')
 )
 def update_graph(graph_type):
+    if graph_type == 'clientsParAn':
+        # Pas de graphe pour cet onglet, le tableau prend le relais
+        return {}
     if graph_type == 'dépenseClient':
         fig = px.histogram(df.groupby('nom_client')['CA_EUR'].sum().reset_index(name='total_depense'), x='nom_client', y='total_depense')
     elif graph_type == 'nbCommandesClient':
@@ -113,16 +175,26 @@ def update_graph(graph_type):
             xaxis_title="Client",
             yaxis_title="Ratio inactivité / rythme habituel",
             xaxis_tickangle=-45
-        )        
+        )
     return fig
 
 
+# Bascule d'affichage : graphe (+ side-graph) vs tableau "Clients par an"
+@callback(
+    Output('graph-clients-container', 'style'),
+    Output('table-clients-container', 'style'),
+    Input('radio-item-clients', 'value'),
+)
+def toggle_vue_clients_par_an(graph_type):
+    if graph_type == 'clientsParAn':
+        return {'display': 'none'}, {'display': 'block'}
+    return {'display': 'block'}, {'display': 'none'}
 
 
 @callback(
     Output('side-graph-clients', 'figure'),
     Output('side-graph-clients-container', 'style'),
-    Output('graph-clients-container', 'md'), # <-- Nouvel Output pour redimensionner la colonne principale
+    Output('graph-clients-container', 'md'),  # <-- Nouvel Output pour redimensionner la colonne principale
     Input('graph-clients', 'hoverData'),
     Input('radio-item-clients', 'value'),
 )
@@ -141,4 +213,3 @@ def update_side_graph(hoverData, graph_type):
 
         # Fig calculée, colonne visible, ET la colonne principale se réduit à 8 espaces
         return fig, {'display': 'block'}, 8
-
