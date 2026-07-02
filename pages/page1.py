@@ -15,7 +15,8 @@ options = [
     {'label': 'Panier moyen', 'value': 'panierMoyen'},
     {'label': 'CA/Récence', 'value': 'CA/Récence'},
     {'label': 'Clients à surveiller', 'value': 'clientsSurveiller'},
-    {'label': 'Clients par an', 'value': 'clientsParAn'},  # <-- nouvel onglet
+    {'label': 'Clients par an', 'value': 'clientsParAn'},
+    {'label': 'Heatmap produit vs mois', 'value':'heatmap'},
 ]
 
 # ------------------------------------------------------------------
@@ -275,6 +276,25 @@ def update_graph(graph_type):
             height=650,
             legend_title_text="",  # Enlève le titre "segment" au-dessus de la légende pour faire plus propre
             legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99)  # Positionnement de la légende
+        )
+    elif graph_type == 'heatmap':
+        fig = px.imshow(
+            pivot,
+            color_continuous_scale="YlOrBr",
+            title="Top 30 clients — Quantité par trimestre",
+            labels=dict(color="Quantité commandée", x="Trimestre", y="Client"),
+            aspect="auto"
+        )
+
+        fig.update_traces(
+            xgap=1,
+            ygap=1
+        )
+
+        fig.update_layout(
+            xaxis_tickangle=-45,
+            width=1000,
+            height=700
         )
 
     return fig
