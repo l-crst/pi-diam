@@ -1,3 +1,7 @@
+pandas
+numpy
 dash-bootstrap-components
 dash-ag-grid
 dash[cloud]
+plotly.express
+pycountry
