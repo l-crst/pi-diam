@@ -5,6 +5,9 @@ import dash_ag_grid as dag
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
+import webbrowser
+from threading import Timer
+
 
 
 
@@ -48,6 +51,12 @@ content = html.Div([
 # App layout
 app.layout = html.Div([dcc.Location(id="url"), sidebar, content])
 
-# Run the app
+
+def open_browser():
+    # Ouvre l'URL par défaut de Dash dans le navigateur web
+    webbrowser.open_new("http://127.0.0.1:8050/page1")
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    Timer(1.5, open_browser).start()
+    app.run(debug=False, port=8050)
