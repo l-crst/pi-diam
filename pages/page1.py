@@ -62,8 +62,7 @@ table_clients_par_an = dag.AgGrid(
     dashGridOptions={"domLayout": "autoHeight"},
     style={"width": "100%"},
     className="ag-theme-alpine",
-    dangerously_allow_code=True,  # nécessaire pour les cellStyle avec condition JS (parseFloat)
-# Calcul des valeurs à afficher (chiffres fixes, pas besoin de callback)
+    dangerously_allow_code=True)  
 nb_mono = int((analyse['type_client'] == 'Mono-gamme').sum())
 nb_multi = int((analyse['type_client'] == 'Multi-gamme').sum())
 pct_mono = repartition_clients.get('Mono-gamme', 0)
