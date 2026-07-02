@@ -122,7 +122,7 @@ layout = dbc.Container(
                     },
                 ),
                 html.Img(
-                    src="carte vins.jpeg",  # adapte l'extension si besoin (.jpg, .png...)
+                    src="/assets/carte_vins.jpeg",  # adapte l'extension si besoin (.jpg, .png...)
                     style={
                         'width': '100%',
                         'maxWidth': '900px',
