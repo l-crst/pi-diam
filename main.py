@@ -4,8 +4,20 @@ from datetime import date
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+import sys
+import os
 
-df = pd.read_csv('DataSet Mines(Feuil1).csv', sep=";")
+def resource_path(relative_path):
+    """Obtient le chemin absolu vers la ressource, fonctionne pour le dev et PyInstaller"""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+df = pd.read_csv(resource_path('DataSet Mines(Feuil1).csv'), sep=';')
+
 
 df['Dat_Fact'] = pd.to_datetime(df['Dat_Fact'], format='%d/%m/%Y')
 df['annee'] = df['Dat_Fact'].dt.year

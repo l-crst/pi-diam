@@ -9,10 +9,12 @@ import pandas as pd
 import numpy as np
 import pycountry
 
+
+
 dash.register_page(__name__, name="International")
 
 # --- CHARGEMENT DES DONNÉES ---
-df_intl = pd.read_csv("VfinaleHIstorical Sales(Copie de Sheet1) (1).csv", sep=";")
+df_intl = pd.read_csv(resource_path("VfinaleHIstorical Sales(Copie de Sheet1) (1).csv"), sep=";")
 
 # --- NETTOYAGE / TYPAGE ---
 df_intl['Date_Fact'] = pd.to_datetime(df_intl['Date_Fact'], errors='coerce')
