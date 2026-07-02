@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import pycountry
 
-dash.register_page(__name__,name="International")
+dash.register_page(__name__, name="International")
 
 # --- CHARGEMENT DES DONNÉES ---
 df_intl = pd.read_csv("VfinaleHIstorical Sales(Copie de Sheet1) (1).csv", sep=";")
@@ -107,6 +107,32 @@ layout = dbc.Container(
             ],
             align='center',
         ),
+
+        # --- Section texte + image (visible uniquement pour "geoclients") ---
+        html.Div(
+            id='section-carte-vins',
+            children=[
+                html.Hr(),
+                html.Div(
+                    "Texte à compléter ici : commentaire sur la répartition géographique des clients.",
+                    style={
+                        'padding': '20px',
+                        'fontSize': '16px',
+                        'textAlign': 'justify',
+                    },
+                ),
+                html.Img(
+                    src="/assets/carte_vins.png",  # adapte l'extension si besoin (.jpg, .png...)
+                    style={
+                        'width': '100%',
+                        'maxWidth': '900px',
+                        'display': 'block',
+                        'margin': '20px auto',
+                    },
+                ),
+            ],
+            style={'display': 'block'},  # visible par défaut car 'geoclients' est la valeur initiale
+        ),
     ],
     fluid=True,
 )
@@ -115,9 +141,13 @@ layout = dbc.Container(
 # --- LOGIQUE INTERACTIVE (CALLBACK) ---
 @callback(
     Output(component_id='graph-pays', component_property='figure'),
+    Output(component_id='section-carte-vins', component_property='style'),
     Input(component_id='radio-item-pays', component_property='value')
 )
 def update_graph(graph_type):
+
+    # Affiche la section texte + image seulement pour le premier bouton
+    style_section = {'display': 'block'} if graph_type == 'geoclients' else {'display': 'none'}
 
     if graph_type == 'geoclients':
         df_geo = (
@@ -178,7 +208,7 @@ def update_graph(graph_type):
             legend_title="Pays",
         )
 
-    # --- Étiquettes des 5 plus gros pays sur leur courbe ---
+        # --- Étiquettes des 5 plus gros pays sur leur courbe ---
         top5_pays = (
             df_intl.groupby('PAYS_FACT')['QUANTITE']
             .sum()
@@ -186,15 +216,15 @@ def update_graph(graph_type):
             .head(5)
             .index
             .tolist()
-    )
+        )
 
         derniere_annee = df_evo['annee'].max()
         df_derniere = df_evo[df_evo['annee'] == derniere_annee].copy()
         df_derniere['pct'] = df_derniere['QUANTITE'] / df_derniere['QUANTITE'].sum() * 100
 
-    # L'ordre d'empilement de plotly correspond à l'ordre des traces
-    # générées dans la figure -> on s'en sert pour calculer la
-    # position cumulée (centre de chaque bande) à la dernière année
+        # L'ordre d'empilement de plotly correspond à l'ordre des traces
+        # générées dans la figure -> on s'en sert pour calculer la
+        # position cumulée (centre de chaque bande) à la dernière année
         ordre_pays = [trace.name for trace in fig.data]
         df_derniere['ordre'] = df_derniere['PAYS_FACT'].apply(
             lambda p: ordre_pays.index(p) if p in ordre_pays else -1
@@ -235,4 +265,4 @@ def update_graph(graph_type):
             yaxis_title="Quantité totale commandée",
         )
 
-    return fig
+    return fig, style_section
