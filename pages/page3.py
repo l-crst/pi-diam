@@ -9,14 +9,14 @@ import pandas as pd
 import numpy as np
 import pycountry
 
-
+#truc classique pour les pages
 
 dash.register_page(__name__, name="International")
 
-# --- CHARGEMENT DES DONNÉES ---
+
 df_intl = pd.read_csv(resource_path("VfinaleHIstorical Sales(Copie de Sheet1) (1).csv"), sep=";")
 
-# --- NETTOYAGE / TYPAGE ---
+
 df_intl['Date_Fact'] = pd.to_datetime(df_intl['Date_Fact'], errors='coerce')
 
 
@@ -28,7 +28,7 @@ def nettoyer_quantite(val):
     if pd.isna(val):
         return None
     val = str(val).strip()
-    val = val.replace('\xa0', '').replace(' ', '')  # espaces normaux + insécables
+    val = val.replace('\xa0', '').replace(' ', '')  
     if val == '':
         return None
     if ',' in val:
@@ -59,7 +59,7 @@ def convertir_iso2_en_iso3(code_iso2):
 
 df_intl['iso_alpha3'] = df_intl['PAYS_FACT'].apply(convertir_iso2_en_iso3)
 
-# --- AGRÉGAT ANNUEL PAR PAYS (utilisé pour panier moyen, fréquence, variations) ---
+# par pays et par annee, on calcule le panier moyen et la frequence (nombre de commandes sur l'année)
 df_yearly = (
     df_intl.groupby(['PAYS_FACT', 'iso_alpha3', 'annee'])
     .agg(
@@ -71,7 +71,7 @@ df_yearly = (
 df_yearly['panier_moyen'] = df_yearly['quantite_totale'] / df_yearly['nb_commandes']
 df_yearly['frequence'] = df_yearly['nb_commandes']  # nombre de commandes sur l'année
 
-# --- OPTIONS DU RADIO ---
+#les boutons
 options = [
     {'label': 'Répartition géographique des clients', 'value': 'geoclients'},
     {'label': 'Évolution des commandes par pays', 'value': 'evolutionPays'},
@@ -79,7 +79,7 @@ options = [
     {'label': 'Évolution du panier moyen par pays', 'value': 'panierMoyen'},
 ]
 
-# --- OPTIONS DU MENU DÉROULANT (ANNÉES) ---
+#menu déroulant pour l'année
 annees_disponibles = sorted(df_intl['annee'].dropna().unique().astype(int).tolist())
 derniere_annee_globale = max(annees_disponibles)
 options_annee = [{'label': 'Total (toutes années)', 'value': 'total'}] + [
@@ -89,7 +89,7 @@ options_annee = [{'label': 'Total (toutes années)', 'value': 'total'}] + [
 # Boutons pour lesquels le menu déroulant Année est pertinent
 boutons_avec_filtre_annee = ('geoclients', 'topPays', 'panierMoyen')
 
-# --- MISE EN PAGE (LAYOUT) ---
+# mise en page
 layout = dbc.Container(
     [
         html.Div(
@@ -120,7 +120,7 @@ layout = dbc.Container(
             className='mb-3',
         ),
 
-        # --- Menu déroulant Année (visible pour boutons 1, 3 et 4) ---
+        # menu déroulant
         dbc.Row(
             dbc.Col(
                 html.Div(
@@ -153,7 +153,7 @@ layout = dbc.Container(
             align='center',
         ),
 
-        # --- Section texte + image (visible uniquement pour "geoclients") ---
+
         html.Div(
             id='section-carte-vins',
             children=[
@@ -179,7 +179,7 @@ layout = dbc.Container(
             style={'display': 'block'},
         ),
 
-        # --- Section tableau de classement (visible uniquement pour "panierMoyen") ---
+        # panier moyen : tableau de classement par pays
         html.Div(
             id='section-table-panier',
             children=[
@@ -225,7 +225,7 @@ def calculer_variation(pays, annee_ref, n_ans, lookup):
     return round((valeur_actuelle - valeur_precedente) / valeur_precedente * 100, 1)
 
 
-# --- LOGIQUE INTERACTIVE (CALLBACK) ---
+#callback
 @callback(
     Output(component_id='graph-pays', component_property='figure'),
     Output(component_id='section-carte-vins', component_property='style'),
@@ -237,22 +237,19 @@ def calculer_variation(pays, annee_ref, n_ans, lookup):
     Input(component_id='radio-item-pays', component_property='value'),
     Input(component_id='dropdown-annee', component_property='value'),
 )
+# affichage des graphes et du tableau selon le bouton sélectionné
 def update_graph(graph_type, annee_selection):
 
-    # Affiche la section texte + image seulement pour le premier bouton
     style_section = {'display': 'block'} if graph_type == 'geoclients' else {'display': 'none'}
 
     # Le menu déroulant Année n'a de sens que pour les boutons 1, 3 et 4
     style_dropdown = {'display': 'block'} if graph_type in boutons_avec_filtre_annee else {'display': 'none'}
 
-    # Le tableau n'apparaît que pour le bouton 4
     style_table = {'display': 'block'} if graph_type == 'panierMoyen' else {'display': 'none'}
 
     # Valeurs par défaut du tableau (utilisées si on n'est pas sur "panierMoyen")
     table_columns, table_data, table_style_conditional = [], [], []
 
-    # On filtre les données uniquement si on est sur un bouton concerné
-    # et qu'une année précise (≠ "total") est sélectionnée
     if graph_type in boutons_avec_filtre_annee and annee_selection != 'total':
         df_filtre = df_intl[df_intl['annee'] == annee_selection]
         suffixe_titre = f" — Année {annee_selection}"
@@ -369,7 +366,6 @@ def update_graph(graph_type, annee_selection):
 
     elif graph_type == 'panierMoyen':
 
-        # --- Carte : panier moyen par pays (pour l'année sélectionnée ou en moyenne globale) ---
         df_panier = (
             df_filtre.groupby(['PAYS_FACT', 'iso_alpha3'])
             .agg(quantite_totale=('QUANTITE', 'sum'), nb_commandes=('Code_Client', 'count'))
@@ -398,13 +394,10 @@ def update_graph(graph_type, annee_selection):
             coloraxis_colorbar=dict(title="Panier<br>moyen"),
         )
 
-        # --- Tableau de classement ---
         annee_ref = annee_selection if annee_selection != 'total' else derniere_annee_globale
 
-        # Table de correspondance (pays, année) -> panier_moyen, pour calculer les variations
         lookup_panier = df_yearly.set_index(['PAYS_FACT', 'annee'])['panier_moyen'].to_dict()
 
-        # Données de l'année de référence pour panier moyen + fréquence
         df_ref = df_yearly[df_yearly['annee'] == annee_ref].copy()
 
         df_ref['var_1an'] = df_ref['PAYS_FACT'].apply(lambda p: calculer_variation(p, annee_ref, 1, lookup_panier))
@@ -431,7 +424,7 @@ def update_graph(graph_type, annee_selection):
         table_columns = [{'name': col, 'id': col} for col in df_ref_affichage.columns]
         table_data = df_ref_affichage.to_dict('records')
 
-        # --- Coloration conditionnelle vert / rouge pour les colonnes de variation ---
+        #Coloration
         colonnes_variation = ['Variation N-1 (%)', 'Variation N-2 (%)', 'Variation N-3 (%)']
         table_style_conditional = []
         for col in colonnes_variation:
