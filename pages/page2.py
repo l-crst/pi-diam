@@ -4,7 +4,7 @@ from dash import html, dcc, callback, Input, Output
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
-dash.register_page(__name__)
+dash.register_page(__name__,name="Analyse des gammes")
 
 layout = html.Div([
     html.H1("page 2")
