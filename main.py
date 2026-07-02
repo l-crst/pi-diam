@@ -445,7 +445,7 @@ def tracer_evolution_panier_moyen(evolution_panier_moyen: pd.DataFrame, nom_fich
     plt.close(fig)
 # === Clients à surveiller (ralentissement du rythme d'achat) ===
 
-def calculer_clients_a_surveiller(df: pd.DataFrame, min_commandes: int = 3, facteur_alerte: float = 1.5) -> pd.DataFrame:
+def calculer_clients_a_surveiller(df: pd.DataFrame, min_commandes: int = 3, facteur_alerte: float = 1.1) -> pd.DataFrame:
     """
     Détecte les clients dont le délai depuis leur dernière commande dépasse
     significativement leur rythme d'achat historique.
@@ -724,4 +724,9 @@ if __name__ == "__main__":
 
     tracer_evolution_panier_moyen(evolution_panier_moyen, 'evolution_panier_moyen.png')
     print("\nGraphique enregistré : evolution_panier_moyen.png")
+    nb_commandes_par_client = df.groupby('nom_client').size()
+    nb_clients_total = len(nb_commandes_par_client)
+    nb_clients_2plus = (nb_commandes_par_client >= 2).sum()
+    taux_conversion_2e_commande = round(nb_clients_2plus / nb_clients_total * 100, 1)
+    print(f"\nTaux de conversion vers la 2ème commande : {taux_conversion_2e_commande}%")
 
