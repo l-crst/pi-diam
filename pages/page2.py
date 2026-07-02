@@ -13,10 +13,10 @@ layout = html.Div([
 options = [
     {'label': 'Répartition des gammes', 'value': 'gammes'},
     {'label': 'Évolution des gammes', 'value': 'evolutionGammes'},
-    {'label': 'Évolution du CA par gamme', 'value': 'evolutionGammesCA'},
+    {'label': 'Évolution du CA par gamme', 'value': 'evolutionGammesCA'},#les boutons
 
 ]
-# App layout
+# truc classique pour les pages
 layout = dbc.Container(
     [
               html.Div(
@@ -57,7 +57,7 @@ layout = dbc.Container(
     fluid=True,
 )
 
-# Add controls to build the interaction
+# Le contenu de la page
 @callback(
     Output(component_id='graph-gammes', component_property='figure'),
     Input(component_id='radio-item-gammes', component_property='value')
