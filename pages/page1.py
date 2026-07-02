@@ -4,7 +4,7 @@ from dash import html, dcc, callback, Input, Output
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
-dash.register_page(__name__,name="Analyse des clients")
+dash.register_page(__name__, name="Analyse des clients")
 
 options = [
     {'label': 'Dépense Client', 'value': 'dépenseClient'},
@@ -14,10 +14,53 @@ options = [
     {'label': 'Panier moyen', 'value': 'panierMoyen'},
     {'label': 'Clients à surveiller', 'value': 'clientsSurveiller'},
 ]
+
+# Calcul des valeurs à afficher (chiffres fixes, pas besoin de callback)
+nb_mono = int((analyse['type_client'] == 'Mono-gamme').sum())
+nb_multi = int((analyse['type_client'] == 'Multi-gamme').sum())
+pct_mono = repartition_clients.get('Mono-gamme', 0)
+pct_multi = repartition_clients.get('Multi-gamme', 0)
+
+pct_ca_mono = stats_par_type.loc['Mono-gamme', '%_CA_total'] if 'Mono-gamme' in stats_par_type.index else 0
+pct_ca_multi = stats_par_type.loc['Multi-gamme', '%_CA_total'] if 'Multi-gamme' in stats_par_type.index else 0
+
+depense_moyenne_mono = stats_par_type.loc['Mono-gamme', 'depense_moyenne'] if 'Mono-gamme' in stats_par_type.index else 0
+depense_moyenne_multi = stats_par_type.loc['Multi-gamme', 'depense_moyenne'] if 'Multi-gamme' in stats_par_type.index else 0
+
+kpi_mono_multi = dbc.Row(
+    [
+        dbc.Col(
+            dbc.Card(
+                dbc.CardBody([
+                    html.H4("Mono-gamme", className="card-title"),
+                    html.P(f"{nb_mono} clients ({pct_mono}%)", className="card-text"),
+                    html.P(f"{pct_ca_mono}% du CA total", className="card-text text-muted"),
+                    html.P(f"Dépense moyenne : {depense_moyenne_mono:,.0f} €", className="card-text text-muted"),
+                ]),
+                color="light",
+            ),
+            width=6,
+        ),
+        dbc.Col(
+            dbc.Card(
+                dbc.CardBody([
+                    html.H4("Multi-gamme", className="card-title"),
+                    html.P(f"{nb_multi} clients ({pct_multi}%)", className="card-text"),
+                    html.P(f"{pct_ca_multi}% du CA total", className="card-text text-muted"),
+                    html.P(f"Dépense moyenne : {depense_moyenne_multi:,.0f} €", className="card-text text-muted"),
+                ]),
+                color="light",
+            ),
+            width=6,
+        ),
+    ],
+    className="mb-4",
+)
+
 # App layout
 layout = dbc.Container(
     [
-              html.Div(
+        html.Div(
             [
                 html.H1(
                     'Analyse du cycle de vie des clients de la société DIAM Bouchage',
@@ -27,6 +70,9 @@ layout = dbc.Container(
             style={'marginTop': '40px', 'marginBottom': '30px'},
         ),
         html.Hr(),
+
+        kpi_mono_multi,
+
         dbc.Row(
             dbc.Col(
                 dbc.RadioItems(
@@ -46,7 +92,7 @@ layout = dbc.Container(
         ),
 
         dbc.Row(
-    [
+            [
                 dbc.Col(dcc.Graph(figure={}, id='graph-clients'), width=7, id='graph-clients-container'),
                 dbc.Col(
                     dcc.Graph(figure={}, id='side-graph-clients'),
@@ -117,8 +163,6 @@ def update_graph(graph_type):
     return fig
 
 
-
-
 @callback(
     Output('side-graph-clients', 'figure'),
     Output('side-graph-clients-container', 'style'),
@@ -141,4 +185,3 @@ def update_side_graph(hoverData, graph_type):
 
         # Fig calculée, colonne visible, ET la colonne principale se réduit à 8 espaces
         return fig, {'display': 'block'}, 8
-
